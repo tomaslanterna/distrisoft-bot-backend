@@ -4,4 +4,8 @@ const getClientByPhone = async (clientPhone) => {
   return await Client.findOne({ phone: clientPhone });
 };
 
-module.exports = { getClientByPhone };
+const getAllClients = async () => {
+  return await Client.find({});
+};
+
+module.exports = { getClientByPhone, getAllClients };

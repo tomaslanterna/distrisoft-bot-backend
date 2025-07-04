@@ -1,4 +1,3 @@
-const cron = require("node-cron");
 const dayjs = require("dayjs");
 const { getAllClients } = require("../services/clientService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
@@ -12,10 +11,11 @@ const notifyAllClients = async () => {
 
     // Filtramos solo los clientes a notificar
     const clientsToNotify = clients.filter((client) => {
-      if (!client.distributionDate || !client.phone || !client.name)
+      if (!client.distributionDayOfMonth || !client.phone || !client.name)
         return false;
 
-      const distDate = dayjs(client.distributionDate);
+      const distributionDateUTC = dayjs().date(client.distributionDayOfMonth);
+      const distDate = dayjs(distributionDateUTC);
       return (
         distDate.date() === tomorrow.date() &&
         distDate.month() === tomorrow.month()
@@ -23,7 +23,7 @@ const notifyAllClients = async () => {
     });
 
     // Creamos un array de promesas para enviar todos los mensajes en paralelo
-    const messagePromises = clientsToNotify.map((client) => {
+    const messagePromises = clientsToNotify.map(async (client) => {
       const message = `Hola ${client.name}, mañana pasa tu distribuidora como es habitual. ¿Qué productos vas a necesitar?`;
 
       return sendWhatsAppMessage(null, client.phone, message)

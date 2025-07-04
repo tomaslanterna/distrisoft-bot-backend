@@ -44,8 +44,6 @@ mongoose
     process.exit(1);
   });
 
-cron.schedule("0 8 * * 0-5", notifyAllClients);
-
 // Global error handler
 app.use((error, req, res, next) => {
   console.error("Global error:", error);
@@ -53,6 +51,10 @@ app.use((error, req, res, next) => {
     success: false,
     message: "Internal server error",
   });
+});
+
+cron.schedule("0 1 * * 0-5", notifyAllClients, {
+  timezone: "America/Montevideo",
 });
 
 module.exports = app;

@@ -20,6 +20,11 @@ const clientSchema = new mongoose.Schema({
     trim: true,
     index: true,
   },
+  distributionDayOfMonth: {
+    type: Number,
+    required: true,
+    unique: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
