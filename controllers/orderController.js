@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const { getClientByPhone } = require("../services/clientService");
 const { getDistributorByPhone } = require("../services/distributorService");
+const { createOrder } = require("../services/order.Service");
 
 const whatsAppWebHook = async (req, res) => {
   try {
@@ -22,7 +23,7 @@ const whatsAppWebHook = async (req, res) => {
     const order = buildOrderMessage(body);
 
     if (!order) {
-      sendWhatsAppMessage(
+      await sendWhatsAppMessage(
         req,
         clientPhone,
         distributorBotPhone,
@@ -91,7 +92,7 @@ const whatsAppWebHook = async (req, res) => {
     const confirmDistributionPhone = distributor.orderPhone;
 
     // Create new order
-    const newOrder = new Order({
+    const createdOrder = await createOrder({
       message: message,
       date: orderDate,
       client: client._id,
@@ -100,7 +101,6 @@ const whatsAppWebHook = async (req, res) => {
       distributor: distributor._id,
     });
 
-    await newOrder.save();
     // Send success WhatsApp message to client and distributor
     const successConfirmOrderMessage = `Gracias por tu pedido. Recibimos: '${message}'. Te avisamos ante cualquier novedad.`;
     const successCreatedOrderMessage = `Pedido creado. Detalle: '${message}'`;

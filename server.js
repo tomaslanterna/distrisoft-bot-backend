@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cron = require("node-cron");
 require("dotenv").config({
   path:
     process.env.NODE_ENV === "production"
@@ -9,6 +10,7 @@ require("dotenv").config({
 });
 
 const orderRoutes = require("./routes/orderRoutes");
+const notifyAllClients = require("./scripts/notifyClientsCron");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +43,8 @@ mongoose
     console.error("MongoDB connection error:", error);
     process.exit(1);
   });
+
+cron.schedule("0 8 * * 0-5", notifyAllClients);
 
 // Global error handler
 app.use((error, req, res, next) => {
