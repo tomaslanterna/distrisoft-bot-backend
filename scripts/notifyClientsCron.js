@@ -1,6 +1,12 @@
 const dayjs = require("dayjs");
 const { getAllClients } = require("../services/clientService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
+const twilio = require("twilio");
+
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 const notifyAllClients = async () => {
   try {
@@ -26,7 +32,7 @@ const notifyAllClients = async () => {
     const messagePromises = clientsToNotify.map(async (client) => {
       const message = `Hola ${client.name}, mañana pasa tu distribuidora como es habitual. ¿Qué productos vas a necesitar?`;
 
-      return sendWhatsAppMessage(null, client.phone, message)
+      return sendWhatsAppMessage({ twilioClient }, client.phone, message)
         .then(() => {
           console.log(`📨 Mensaje enviado a ${client.phone}`);
         })
