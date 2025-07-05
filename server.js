@@ -53,7 +53,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-cron.schedule("0 1 * * 0-7", notifyAllClients, {
+cron.schedule("0 1 * * 0-6", notifyAllClients, {
   timezone: "America/Montevideo",
 });
 
