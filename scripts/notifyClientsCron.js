@@ -3,13 +3,12 @@ const { getAllClients } = require("../services/clientService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const twilio = require("twilio");
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
 const notifyAllClients = async () => {
   try {
+    const twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
     console.log("⏰ Ejecutando cron interno...");
 
     const clients = await getAllClients();
