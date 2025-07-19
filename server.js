@@ -1,7 +1,6 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const cron = require("node-cron");
 require("dotenv").config({
   path:
     process.env.NODE_ENV === "production"
@@ -10,7 +9,6 @@ require("dotenv").config({
 });
 
 const orderRoutes = require("./routes/orderRoutes");
-const notifyAllClients = require("./scripts/notifyClientsCron");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -51,10 +49,6 @@ app.use((error, req, res, next) => {
     success: false,
     message: "Internal server error",
   });
-});
-
-cron.schedule("0 1 * * 0-6", notifyAllClients, {
-  timezone: "America/Montevideo",
 });
 
 module.exports = app;
