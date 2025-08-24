@@ -48,4 +48,15 @@ const buildOrderMessage = (body) => {
   return order;
 };
 
-module.exports = buildOrderMessage;
+const buildOrder = (orderFromMessage) => {
+  if (!orderFromMessage) return {};
+  
+  const order = {
+    orderId: uuidv4(),
+    products: [],
+    total: parseFloat(orderFromMessage.total_price),
+  };
+  return order;
+};
+
+module.exports = { buildOrderMessage, buildOrder };

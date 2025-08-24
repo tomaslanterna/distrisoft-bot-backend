@@ -1,5 +1,8 @@
 const express = require("express");
-const { whatsAppWebHook } = require("../controllers/orderController");
+const {
+  whatsAppWebHook,
+  whapiWebHook,
+} = require("../controllers/orderController");
 const verifyTwilioSignature = require("../middlewares/verifyTwiloSignatureMiddleware");
 const twilioClientMiddleware = require("../middlewares/createTwiloClientMiddleware");
 
@@ -11,5 +14,7 @@ router.post(
   twilioClientMiddleware,
   whatsAppWebHook
 );
+
+router.post("/whapi/webhook", whapiWebHook);
 
 module.exports = router;

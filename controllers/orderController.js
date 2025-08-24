@@ -1,9 +1,16 @@
-const buildOrderMessage = require("../builders/buildOrderMessage");
+const {
+  buildOrderMessage,
+  buildOrder,
+} = require("../builders/buildOrderMessage");
 const Order = require("../models/Order");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const { getClientByPhone } = require("../services/clientService");
-const { getDistributorByPhone } = require("../services/distributorService");
+const {
+  getDistributorByPhone,
+  getDistributorByChannelId,
+} = require("../services/distributorService");
 const { createOrder } = require("../services/order.Service");
+const { sendWhapiMessage } = require("../services/whatsappApiService");
 
 const whatsAppWebHook = async (req, res) => {
   try {
@@ -128,6 +135,100 @@ const whatsAppWebHook = async (req, res) => {
   }
 };
 
+const whapiWebHook = async (req, res) => {
+  try {
+    const clientPhone = req.body.messages?.length
+      ? req.body.messages[0]?.from
+      : "";
+    const channelId = req.body.channel_id;
+    const orderFromMessage = req.body.messages?.length
+      ? req.body.messages[0]?.order
+      : null;
+    const body = req.body.messages?.length
+      ? req.body.messages[0]?.text?.body
+      : null;
+
+    const date = new Date().toISOString();
+
+    const order = buildOrder(orderFromMessage);
+
+    if (body) {
+      return res.status(200).send({ status: "ok" });
+    }
+
+    if (!order) {
+      return res.status(200).send({ status: "ok" });
+    }
+
+    // Validate required fields
+    if (!clientPhone || !channelId || !date || !order) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required fields: clientPhone, channelId, message, date",
+      });
+    }
+
+    // Validate date format
+    const orderDate = new Date(date);
+    if (isNaN(orderDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Please use ISO date string.",
+      });
+    }
+
+    const result = await Promise.all([
+      getClientByPhone(clientPhone),
+      getDistributorByChannelId(channelId),
+    ]);
+
+    if (!result.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Please use ISO date string.",
+      });
+    }
+
+    const { client, distributor } = result.reduce(
+      (acc, current, index) => {
+        if (index === 0) {
+          acc.client = current;
+        } else if (index === 1) {
+          acc.distributor = current;
+        }
+        return acc;
+      },
+      { client: {}, distributor: {} }
+    );
+
+    // Create new order
+    const createdOrder = await createOrder({
+      message: `Total productos ${orderFromMessage.item_count}`,
+      date: orderDate,
+      client: client._id,
+      products: [],
+      total: order.total,
+      distributor: distributor._id,
+    });
+
+    // Send success WhatsApp message to client and distributor
+    const successConfirmOrderMessage = `Gracias por tu pedido. Recibimos: ${orderFromMessage.item_count} por $${order.total}. Te avisamos ante cualquier novedad.`;
+
+    await sendWhapiMessage(
+      clientPhone,
+      successConfirmOrderMessage,
+      distributor
+    );
+
+    return res.status(200).send({ status: "ok" });
+  } catch (error) {
+    console.error("Error en webhook:", error);
+    return res.status(500).send("Error interno");
+  }
+};
+
 module.exports = {
   whatsAppWebHook,
+  whapiWebHook,
 };

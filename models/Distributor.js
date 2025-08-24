@@ -20,6 +20,16 @@ const distributorSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  key: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  channelId: {
+    type: String,
+    required: true,
+    unique: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
