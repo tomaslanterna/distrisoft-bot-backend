@@ -10,7 +10,10 @@ const {
   getDistributorByChannelId,
 } = require("../services/distributorService");
 const { createOrder } = require("../services/order.Service");
-const { sendWhapiMessage } = require("../services/whatsappApiService");
+const {
+  sendWhapiMessage,
+  getWhapiOrderDetail,
+} = require("../services/whatsappApiService");
 
 const whatsAppWebHook = async (req, res) => {
   try {
@@ -150,22 +153,20 @@ const whapiWebHook = async (req, res) => {
 
     const date = new Date().toISOString();
 
-    const order = buildOrder(orderFromMessage);
-
     if (body) {
       return res.status(200).send({ status: "ok" });
     }
 
-    if (!order) {
+    if (!orderFromMessage) {
       return res.status(200).send({ status: "ok" });
     }
 
     // Validate required fields
-    if (!clientPhone || !channelId || !date || !order) {
+    if (!clientPhone || !channelId || !date || !orderFromMessage) {
       return res.status(400).json({
         success: false,
         message:
-          "Missing required fields: clientPhone, channelId, message, date",
+          "Missing required fields: clientPhone, channelId, orderFromMessage, date",
       });
     }
 
@@ -186,7 +187,7 @@ const whapiWebHook = async (req, res) => {
     if (!result.length) {
       return res.status(400).json({
         success: false,
-        message: "Invalid date format. Please use ISO date string.",
+        message: "Error in getClientByPhone or getDistributorByChannelId",
       });
     }
 
@@ -202,18 +203,21 @@ const whapiWebHook = async (req, res) => {
       { client: {}, distributor: {} }
     );
 
-    // Create new order
-    const createdOrder = await createOrder({
-      message: `Total productos ${orderFromMessage.item_count}`,
+    const orderItems = await getWhapiOrderDetail(orderFromMessage, distributor);
+
+    const order = buildOrder(orderFromMessage, orderItems);
+
+    await createOrder({
+      message: order.message,
       date: orderDate,
       client: client._id,
-      products: [],
+      orderWppId: order.orderWppId,
+      products: order.products,
       total: order.total,
       distributor: distributor._id,
     });
 
-    // Send success WhatsApp message to client and distributor
-    const successConfirmOrderMessage = `Gracias por tu pedido. Recibimos: ${orderFromMessage.item_count} por $${order.total}. Te avisamos ante cualquier novedad.`;
+    const successConfirmOrderMessage = `Gracias por tu pedido.\n${order.message}\nTe avisamos ante cualquier novedad.`;
 
     await sendWhapiMessage(
       clientPhone,

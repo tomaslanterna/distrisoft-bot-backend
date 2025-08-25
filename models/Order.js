@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 const { Product } = require("./Product");
 
 const orderSchema = new mongoose.Schema({
+  orderWppId: {
+    type: String,
+    default: 0,
+    required: true,
+  },
   message: {
     type: String,
     required: true,

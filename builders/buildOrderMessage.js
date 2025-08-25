@@ -48,12 +48,22 @@ const buildOrderMessage = (body) => {
   return order;
 };
 
-const buildOrder = (orderFromMessage) => {
+const buildOrder = (orderFromMessage, orderItems) => {
   if (!orderFromMessage) return {};
-  
+
+  const message =
+    "Recibimos:\n" +
+    orderItems.map((item) => `${item.quantity} x ${item.name}`).join("\n") +
+    `\nTotal: $${orderFromMessage.total_price}`;
+
   const order = {
-    orderId: uuidv4(),
-    products: [],
+    orderWppId: orderFromMessage.order_id,
+    products: orderItems.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    message,
     total: parseFloat(orderFromMessage.total_price),
   };
   return order;
