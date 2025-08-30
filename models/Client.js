@@ -4,14 +4,20 @@ const clientSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    unique: false,
     trim: true,
   },
   address: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
+    unique: false,
+    trim: false,
+  },
+  ubication: {
+    type: String,
+    required: true,
+    unique: false,
+    trim: false,
   },
   phone: {
     type: String,
@@ -20,15 +26,10 @@ const clientSchema = new mongoose.Schema({
     trim: true,
     index: true,
   },
-  distributionDayOfMonth: {
-    type: Number,
-    required: true,
-    unique: true,
-  },
   distributionDayOfWeek: {
     type: String,
     required: true,
-    unique: true,
+    unique: false,
   },
   createdAt: {
     type: Date,

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { ClientDistributor } = require("./ClientDistributor");
 
 const distributorSchema = new mongoose.Schema({
   name: {
@@ -30,6 +31,7 @@ const distributorSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  clients: [ClientDistributor],
   createdAt: {
     type: Date,
     default: Date.now,

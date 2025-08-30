@@ -1,0 +1,39 @@
+const { updateDistributorByPhone } = require("../services/distributorService");
+
+const updateDistributor = async (req, res) => {
+  try {
+    const { distributor } = req.body;
+
+    if (!distributor) {
+      return res.status(404).json({ message: "Distributor not found" });
+    }
+
+    const validClients = distributor.clients.filter(
+      (client) =>
+        client.phone != null && client.address != "" && client.ubication != ""
+    );
+
+    distributor.clients = validClients.map((client) => ({
+      name: client.name,
+      phone: client.phone,
+      distributionDayOfWeek: client.distributionDayOfWeek,
+    }));
+
+    // Llamamos al service para actualizar
+    const updatedDistributor = await updateDistributorByPhone(distributor);
+
+    if (!updatedDistributor) {
+      return res.status(404).json({ message: "Distributor not found" });
+    }
+
+    return res.status(200).json({
+      message: "Distributor updated successfully",
+      data: updatedDistributor,
+    });
+  } catch (error) {
+    console.error("Error updating distributor:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = { updateDistributor };

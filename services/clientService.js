@@ -8,4 +8,8 @@ const getAllClients = async () => {
   return await Client.find({});
 };
 
-module.exports = { getClientByPhone, getAllClients };
+const bulkCreate = async (clients) => {
+  return await Client.insertMany(clients);
+};
+
+module.exports = { getClientByPhone, getAllClients, bulkCreate };

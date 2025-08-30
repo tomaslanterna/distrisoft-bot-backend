@@ -9,6 +9,9 @@ require("dotenv").config({
 });
 
 const orderRoutes = require("./routes/orderRoutes");
+const clientRoutes = require("./routes/clientRoutes");
+const distributorRoutes = require("./routes/distributorRoutes");
+const notifyRoutes = require("./routes/notifyRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,6 +23,9 @@ app.use(express.urlencoded({ extended: false }));
 
 // Routes
 app.use("/message", orderRoutes);
+// app.use("/client", clientRoutes);
+// app.use("/distributor", distributorRoutes);
+app.use("/notify", notifyRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
