@@ -10,7 +10,7 @@ function getTomorrowDay() {
   return tomorrow.format("dddd");
 }
 
-async function notifyClients() {
+async function notifyClients(req,res) {
   try {
     const tomorrowDay = getTomorrowDay();
 
@@ -27,6 +27,8 @@ async function notifyClients() {
         }
       }
     }
+
+    return res.status(200).send({ status: "messages sended correctly" });
   } catch (err) {
     console.error("Error en notifyClients:", err);
   }
