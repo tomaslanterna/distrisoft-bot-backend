@@ -153,29 +153,12 @@ const whapiWebHook = async (req, res) => {
 
     const date = new Date().toISOString();
 
-    if (body) {
-      return res.status(200).send({ status: "ok" });
-    }
-
-    if (!orderFromMessage) {
-      return res.status(200).send({ status: "ok" });
-    }
-
     // Validate required fields
-    if (!clientPhone || !channelId || !date || !orderFromMessage) {
+    if (!clientPhone || !channelId || !date) {
       return res.status(400).json({
         success: false,
         message:
           "Missing required fields: clientPhone, channelId, orderFromMessage, date",
-      });
-    }
-
-    // Validate date format
-    const orderDate = new Date(date);
-    if (isNaN(orderDate.getTime())) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid date format. Please use ISO date string.",
       });
     }
 
@@ -203,6 +186,29 @@ const whapiWebHook = async (req, res) => {
       { client: {}, distributor: {} }
     );
 
+    if (body) {
+      const infoBotMessage = `Hola este es el bot de ${distributor.name}`;
+      const catalogMessage = `Si deseas realizar un pedido, ingresa a nuestro catalogo:\n https://wa.me/c/${distributor.phone}`;
+      await Promise.all([
+        sendWhapiMessage(clientPhone, infoBotMessage, distributor),
+        sendWhapiMessage(clientPhone, catalogMessage, distributor),
+      ]);
+
+      return res.status(200).send({ status: "ok" });
+    }
+
+    if (!orderFromMessage) {
+      return res.status(200).send({ status: "ok" });
+    }
+
+    const orderDate = new Date(date);
+    if (isNaN(orderDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date format. Please use ISO date string.",
+      });
+    }
+
     const orderItems = await getWhapiOrderDetail(orderFromMessage, distributor);
 
     const order = buildOrder(orderFromMessage, orderItems);
@@ -217,13 +223,13 @@ const whapiWebHook = async (req, res) => {
       distributor: distributor._id,
     });
 
-    const successConfirmOrderMessage = `Gracias por tu pedido.\n${order.message}\nTe avisamos ante cualquier novedad.`;
+    const successConfirmOrderMessage = `Gracias por tu pedido.\n${order.message}`;
+    const infoConfirmOrderMessage = `Tu pedido sera entregado entre hoy y mañana.\nSi tienes una consulta comunicate con ${distributor.name} a traves de el siguiente link:\n https://wa.me/59891310235`;
 
-    await sendWhapiMessage(
-      clientPhone,
-      successConfirmOrderMessage,
-      distributor
-    );
+    await Promise.all([
+      sendWhapiMessage(clientPhone, successConfirmOrderMessage, distributor),
+      sendWhapiMessage(clientPhone, infoConfirmOrderMessage, distributor),
+    ]);
 
     return res.status(200).send({ status: "ok" });
   } catch (error) {
