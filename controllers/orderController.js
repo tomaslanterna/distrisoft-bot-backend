@@ -189,6 +189,8 @@ const whapiWebHook = async (req, res) => {
         sendWhapiMessage(clientPhone, infoBotMessage, distributor),
         sendWhapiMessage(clientPhone, clientNotFoundMessage, distributor),
       ]);
+
+      return res.status(200).send({ status: "ok" });
     }
 
     if (body) {
