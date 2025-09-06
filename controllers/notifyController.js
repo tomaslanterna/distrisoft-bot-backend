@@ -23,7 +23,7 @@ async function notifyClients(req, res) {
           tomorrowDay.toLowerCase()
         ) {
           const message = `Hola ${client.name}, te recordamos que ${distributor.name} pasará mañana por tu zona.`;
-          const message2 = `Ya puedes realizar tu pedido ingresando a nuestro catalogo`;
+          const message2 = `Ya puedes realizar tu pedido ingresando a nuestro catalogo\n https://wa.me/c/${distributor.phone}`;
           await Promise.all([
             await sendWhapiMessage(client.phone, message, distributor),
             await sendWhapiMessage(client.phone, message2, distributor),

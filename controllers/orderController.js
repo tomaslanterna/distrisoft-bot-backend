@@ -2,7 +2,6 @@ const {
   buildOrderMessage,
   buildOrder,
 } = require("../builders/buildOrderMessage");
-const Order = require("../models/Order");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const { getClientByPhone } = require("../services/clientService");
 const {
@@ -153,7 +152,6 @@ const whapiWebHook = async (req, res) => {
 
     const date = new Date().toISOString();
 
-    // Validate required fields
     if (!clientPhone || !channelId || !date) {
       return res.status(400).json({
         success: false,
@@ -176,18 +174,24 @@ const whapiWebHook = async (req, res) => {
 
     const { client, distributor } = result.reduce(
       (acc, current, index) => {
-        if (index === 0) {
-          acc.client = current;
-        } else if (index === 1) {
-          acc.distributor = current;
-        }
+        if (index === 0) acc.client = current ?? null;
+        if (index === 1) acc.distributor = current ?? null;
         return acc;
       },
-      { client: {}, distributor: {} }
+      { client: null, distributor: null }
     );
 
+    const infoBotMessage = `Hola este es el bot de ${distributor.name}`;
+
+    if (!client) {
+      const clientNotFoundMessage = `Vemos que no eres un cliente registrado.\n Comunicate con https://wa.me/c/${distributor.orderPhone} para mas informacion`;
+      await Promise.all([
+        sendWhapiMessage(clientPhone, infoBotMessage, distributor),
+        sendWhapiMessage(clientPhone, clientNotFoundMessage, distributor),
+      ]);
+    }
+
     if (body) {
-      const infoBotMessage = `Hola este es el bot de ${distributor.name}`;
       const catalogMessage = `Si deseas realizar un pedido, ingresa a nuestro catalogo:\n https://wa.me/c/${distributor.phone}`;
       await Promise.all([
         sendWhapiMessage(clientPhone, infoBotMessage, distributor),
@@ -224,7 +228,7 @@ const whapiWebHook = async (req, res) => {
     });
 
     const successConfirmOrderMessage = `Gracias por tu pedido.\n${order.message}`;
-    const infoConfirmOrderMessage = `Tu pedido sera entregado entre hoy y mañana.\nSi tienes una consulta comunicate con ${distributor.name} a traves de el siguiente link:\n https://wa.me/59891310235`;
+    const infoConfirmOrderMessage = `Tu pedido sera entregado entre hoy y mañana.\nSi tienes una consulta comunicate con ${distributor.name}:\n https://wa.me/c/${distributor.orderPhone} `;
 
     await Promise.all([
       sendWhapiMessage(clientPhone, successConfirmOrderMessage, distributor),
