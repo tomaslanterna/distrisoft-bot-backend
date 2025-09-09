@@ -181,10 +181,10 @@ const whapiWebHook = async (req, res) => {
       { client: null, distributor: null }
     );
 
-    const infoBotMessage = `Hola este es el bot de ${distributor.name}`;
+    const infoBotMessage = `👋 Hola este es el bot de ${distributor.name}`;
 
     if (!client) {
-      const clientNotFoundMessage = `Vemos que no eres un cliente registrado.\n Comunicate con https://wa.me/c/${distributor.orderPhone} para mas informacion`;
+      const clientNotFoundMessage = `👤 Vemos que no eres un cliente registrado.\n📱 Comunicate con https://wa.me/c/${distributor.orderPhone} para mas informacion`;
       await Promise.all([
         sendWhapiMessage(clientPhone, infoBotMessage, distributor),
         sendWhapiMessage(clientPhone, clientNotFoundMessage, distributor),
@@ -194,7 +194,7 @@ const whapiWebHook = async (req, res) => {
     }
 
     if (body) {
-      const catalogMessage = `Si deseas realizar un pedido, ingresa a nuestro catalogo:\n https://wa.me/c/${distributor.phone}`;
+      const catalogMessage = `📦 Si deseas realizar un pedido, ingresa a nuestro catalogo:\n https://wa.me/c/${distributor.phone}`;
       await Promise.all([
         sendWhapiMessage(clientPhone, infoBotMessage, distributor),
         sendWhapiMessage(clientPhone, catalogMessage, distributor),
@@ -229,12 +229,18 @@ const whapiWebHook = async (req, res) => {
       distributor: distributor._id,
     });
 
-    const successConfirmOrderMessage = `Gracias por tu pedido.\n${order.message}`;
-    const infoConfirmOrderMessage = `Tu pedido sera entregado entre hoy y mañana.\nSi tienes una consulta comunicate con ${distributor.name}:\n https://wa.me/c/${distributor.orderPhone} `;
+    const successConfirmOrderMessage = `🙌🏻 Gracias por tu pedido.\n${order.message}`;
+    const infoConfirmOrderMessage = `🚚 Tu pedido sera entregado entre hoy y mañana.\n📱 Si tienes una consulta comunicate con ${distributor.name}:\n https://wa.me/c/${distributor.orderPhone} `;
+    const confirmOrderMessage = `Pedido realizado desde ${client.name}:\n${order.message}`;
 
     await Promise.all([
       sendWhapiMessage(clientPhone, successConfirmOrderMessage, distributor),
       sendWhapiMessage(clientPhone, infoConfirmOrderMessage, distributor),
+      sendWhapiMessage(
+        distributor.orderPhone,
+        confirmOrderMessage,
+        distributor
+      ),
     ]);
 
     return res.status(200).send({ status: "ok" });
