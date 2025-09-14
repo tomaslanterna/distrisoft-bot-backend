@@ -1,4 +1,5 @@
 const { updateDistributorByPhone } = require("../services/distributorService");
+const { getOrdersByDistributorId } = require("../services/order.Service");
 
 const updateDistributor = async (req, res) => {
   try {
@@ -36,4 +37,29 @@ const updateDistributor = async (req, res) => {
   }
 };
 
-module.exports = { updateDistributor };
+const getDistributorOrders = async (req, res) => {
+  try {
+    const { distributorId } = req.query;
+
+    if (!distributorId) {
+      return res.status(403).json({ message: "DistributorId not found" });
+    }
+
+    const distributorOrders = await getOrdersByDistributorId(distributorId);
+
+    if (!distributorOrders) {
+      return res
+        .status(404)
+        .json({ message: "Error orders not find for distributor" });
+    }
+
+    return res.status(200).json({
+      message: "Orders in distributor",
+      data: distributorOrders,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+module.exports = { updateDistributor, getDistributorOrders };

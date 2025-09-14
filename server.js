@@ -24,7 +24,7 @@ app.use(express.urlencoded({ extended: false }));
 // Routes
 app.use("/message", orderRoutes);
 // app.use("/client", clientRoutes);
-// app.use("/distributor", distributorRoutes);
+app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
 
 // Health check endpoint
