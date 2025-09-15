@@ -11,4 +11,9 @@ const getOrdersByDistributorId = async (distributorId) => {
   return await Order.find({ distributor: distributorObjectId });
 };
 
-module.exports = { createOrder, getOrdersByDistributorId };
+const getOrderByObjectId = async (orderId) => {
+  const orderObjectId = new mongoose.Types.ObjectId(orderId);
+  return await Order.findOne({ _id: orderObjectId }).lean();
+};
+
+module.exports = { createOrder, getOrdersByDistributorId, getOrderByObjectId };

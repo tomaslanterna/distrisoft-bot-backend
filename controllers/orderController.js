@@ -3,12 +3,18 @@ const {
   buildOrder,
 } = require("../builders/buildOrderMessage");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
-const { getClientByPhone } = require("../services/clientService");
+const {
+  getClientByPhone,
+  getClientById,
+} = require("../services/clientService");
 const {
   getDistributorByPhone,
   getDistributorByChannelId,
 } = require("../services/distributorService");
-const { createOrder } = require("../services/order.Service");
+const {
+  createOrder,
+  getOrderByObjectId,
+} = require("../services/order.Service");
 const {
   sendWhapiMessage,
   getWhapiOrderDetail,
@@ -250,7 +256,41 @@ const whapiWebHook = async (req, res) => {
   }
 };
 
+const getOrderById = async (req, res) => {
+  try {
+    const { orderId } = req.query;
+
+    if (!orderId) {
+      return res.status(403).json({ message: "OrderId not found" });
+    }
+
+    const order = await getOrderByObjectId(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: "Error order not found" });
+    }
+
+    const clientOrder = await getClientById(order.client);
+
+    if (!clientOrder) {
+      return res
+        .status(500)
+        .json({ message: "Internal Server Error on obtain client order" });
+    }
+
+    const mapedOrder = { ...order, client: clientOrder };
+
+    return res.status(200).json({
+      message: "Orders in distributor",
+      data: mapedOrder,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
   whatsAppWebHook,
   whapiWebHook,
+  getOrderById,
 };
