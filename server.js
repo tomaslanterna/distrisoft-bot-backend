@@ -8,7 +8,8 @@ require("dotenv").config({
       : ".env.development",
 });
 
-const orderRoutes = require("./routes/orderRoutes");
+const orderRoutes = require("./routes/order.routes");
+const messageRoutes = require("./routes/message.routes");
 const clientRoutes = require("./routes/clientRoutes");
 const distributorRoutes = require("./routes/distributorRoutes");
 const notifyRoutes = require("./routes/notifyRoutes");
@@ -22,7 +23,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Routes
-app.use("/message", orderRoutes);
+app.use("/message", messageRoutes);
+app.use("/order", orderRoutes);
 // app.use("/client", clientRoutes);
 app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
