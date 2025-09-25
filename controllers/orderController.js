@@ -1,7 +1,4 @@
-const {
-  buildOrderMessage,
-  buildOrder,
-} = require("../builders/buildOrderMessage");
+const { buildOrderMessage, buildOrder } = require("../builders/order.builder");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
 const {
   getClientByPhone,
@@ -190,21 +187,18 @@ const whapiWebHook = async (req, res) => {
     const infoBotMessage = `👋 Hola este es el bot de ${distributor.name}`;
 
     if (!client) {
-      const clientNotFoundMessage = `👤 Vemos que no eres un cliente registrado.\n📱 Comunicate con https://wa.me/c/${distributor.orderPhone} para mas informacion`;
-      await Promise.all([
-        sendWhapiMessage(clientPhone, infoBotMessage, distributor),
-        sendWhapiMessage(clientPhone, clientNotFoundMessage, distributor),
-      ]);
+      const clientNotFoundMessage = `👤 Vemos que no eres un cliente registrado.\n📱 Comunicate con https://wa.me/${distributor.orderPhone} para mas informacion`;
+      await sendWhapiMessage(clientPhone, infoBotMessage, distributor);
+      await sendWhapiMessage(clientPhone, clientNotFoundMessage, distributor);
 
       return res.status(200).send({ status: "ok" });
     }
 
     if (body) {
       const catalogMessage = `📦 Si deseas realizar un pedido, ingresa a nuestro catalogo:\n https://wa.me/c/${distributor.phone}`;
-      await Promise.all([
-        sendWhapiMessage(clientPhone, infoBotMessage, distributor),
-        sendWhapiMessage(clientPhone, catalogMessage, distributor),
-      ]);
+
+      await sendWhapiMessage(clientPhone, infoBotMessage, distributor);
+      await sendWhapiMessage(clientPhone, catalogMessage, distributor);
 
       return res.status(200).send({ status: "ok" });
     }
@@ -228,7 +222,7 @@ const whapiWebHook = async (req, res) => {
     await createOrder({
       message: order.message,
       date: orderDate,
-      client: client._id,
+      client: { id: client._id, name: client.name },
       orderWppId: order.orderWppId,
       products: order.products,
       total: order.total,
@@ -236,18 +230,20 @@ const whapiWebHook = async (req, res) => {
     });
 
     const successConfirmOrderMessage = `🙌🏻 Gracias por tu pedido.\n${order.message}`;
-    const infoConfirmOrderMessage = `🚚 Tu pedido sera entregado entre hoy y mañana.\n📱 Si tienes una consulta comunicate con ${distributor.name}:\n https://wa.me/c/${distributor.orderPhone} `;
+    const infoConfirmOrderMessage = `🚚 Tu pedido sera entregado entre hoy y mañana.\n📱 Si tienes una consulta comunicate con ${distributor.name}:\n https://wa.me/${distributor.orderPhone} `;
     const confirmOrderMessage = `Pedido realizado desde ${client.name}:\n${order.message}`;
 
-    await Promise.all([
-      sendWhapiMessage(clientPhone, successConfirmOrderMessage, distributor),
-      sendWhapiMessage(clientPhone, infoConfirmOrderMessage, distributor),
-      sendWhapiMessage(
-        distributor.orderPhone,
-        confirmOrderMessage,
-        distributor
-      ),
-    ]);
+    await sendWhapiMessage(
+      clientPhone,
+      successConfirmOrderMessage,
+      distributor
+    );
+    await sendWhapiMessage(clientPhone, infoConfirmOrderMessage, distributor);
+    await sendWhapiMessage(
+      distributor.orderPhone,
+      confirmOrderMessage,
+      distributor
+    );
 
     return res.status(200).send({ status: "ok" });
   } catch (error) {

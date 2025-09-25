@@ -17,10 +17,17 @@ const orderSchema = new mongoose.Schema({
     required: true,
   },
   client: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Client",
-    required: true,
-    index: true,
+    id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Client",
+      required: true,
+      index: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
   },
   distributor: {
     type: mongoose.Schema.Types.ObjectId,
