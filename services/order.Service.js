@@ -16,7 +16,7 @@ const getOrderByObjectId = async (orderId) => {
   return await Order.findOne({ _id: orderObjectId }).lean();
 };
 
-const updateOrderStatusById = async (orderId, newStatus) => {
+const updateOrderStatusByOrderId = async (orderId, newStatus) => {
   const orderObjectId = new mongoose.Types.ObjectId(orderId);
   return await Order.findByIdAndUpdate(
     orderObjectId,
@@ -29,5 +29,5 @@ module.exports = {
   createOrder,
   getOrdersByDistributorId,
   getOrderByObjectId,
-  updateOrderStatusById,
+  updateOrderStatusByOrderId,
 };

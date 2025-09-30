@@ -1,6 +1,9 @@
 const { getClientById } = require("../services/clientService");
 const {} = require("../services/distributorService");
-const { getOrderByObjectId } = require("../services/order.Service");
+const {
+  getOrderByObjectId,
+  updateOrderStatusByOrderId,
+} = require("../services/order.Service");
 
 const getOrderById = async (req, res) => {
   try {
@@ -43,7 +46,7 @@ const updateOrderStatusById = async (req, res) => {
       return res.status(403).json({ message: "OrderId or status not found" });
     }
 
-    const updatedOrder = await updateOrderStatusById(orderId, status);
+    const updatedOrder = await updateOrderStatusByOrderId(orderId, status);
 
     if (!updatedOrder) {
       return res.status(404).json({ message: "Error order not updated" });
