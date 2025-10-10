@@ -1,5 +1,13 @@
-const { updateDistributorByPhone } = require("../services/distributorService");
+const {
+  updateDistributorByPhone,
+  getDistributorByChannelId,
+} = require("../services/distributorService");
 const { getOrdersByDistributorId } = require("../services/order.Service");
+const {
+  createWhapiProduct,
+  getWhapiProducts,
+  getWhapiCollections,
+} = require("../services/whatsappApiService");
 
 const updateDistributor = async (req, res) => {
   try {
@@ -62,4 +70,110 @@ const getDistributorOrders = async (req, res) => {
   }
 };
 
-module.exports = { updateDistributor, getDistributorOrders };
+const createDistributorProduct = async (req, res) => {
+  try {
+    const { product, distributorChannelId } = req.body;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const createdProduct = await createWhapiProduct(product, distributor);
+
+    if (!createdProduct) {
+      return res.status(500).json({
+        success: false,
+        message: "Error creating product in distributor",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product created successfully",
+      data: createdProduct,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error on createDistributorProduct" });
+  }
+};
+
+const getDistributorProducts = async (req, res) => {
+  try {
+    const { distributorChannelId } = req.query;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const distributorProducts = await getWhapiProducts(distributor);
+
+    if (!distributorProducts) {
+      return res.status(500).json({
+        success: false,
+        message: "Error in getWhapiProducts",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product created successfully",
+      data: distributorProducts,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error getDistributorProducts" });
+  }
+};
+
+const getDistributorCollections = async (req, res) => {
+  try {
+    const { distributorChannelId } = req.query;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const distributorCollections = await getWhapiCollections(distributor);
+
+    if (!distributorCollections) {
+      return res.status(500).json({
+        success: false,
+        message: "Error in getWhapiProducts",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product created successfully",
+      data: distributorCollections,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error getDistributorCollections",
+    });
+  }
+};
+
+module.exports = {
+  updateDistributor,
+  getDistributorOrders,
+  createDistributorProduct,
+  getDistributorProducts,
+  getDistributorCollections,
+};

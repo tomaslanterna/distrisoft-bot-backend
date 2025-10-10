@@ -1,5 +1,4 @@
 const axios = require("axios");
-const { decrypt } = require("../utils/decrypt");
 
 const WHAPI_URL = "https://gate.whapi.cloud";
 
@@ -20,7 +19,7 @@ async function sendWhapiMessage(to, message, distributor) {
       }
     );
 
-    console.log("✅ Mensaje enviado:", response.data);
+    return response.data;
   } catch (error) {
     console.error(
       "❌ Error enviando mensaje:",
@@ -51,4 +50,80 @@ async function getWhapiOrderDetail(order, distributor) {
   }
 }
 
-module.exports = { sendWhapiMessage, getWhapiOrderDetail };
+async function createWhapiProduct(product, distributor) {
+  try {
+    const distributorKey = distributor.key;
+
+    const { data } = await axios.post(
+      `${WHAPI_URL}/business/products`,
+      { ...product },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${distributorKey}`,
+        },
+      }
+    );
+
+    return data;
+  } catch (error) {
+    console.error(
+      "❌ Error enviando mensaje:",
+      error.response?.data || error.message
+    );
+  }
+}
+
+async function getWhapiProducts(distributor) {
+  try {
+    const distributorKey = distributor.key;
+
+    const { data } = await axios.get(
+      `${WHAPI_URL}/business/products?count=50`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${distributorKey}`,
+        },
+      }
+    );
+
+    return data;
+  } catch (error) {
+    console.error(
+      "❌ Error enviando mensaje:",
+      error.response?.data || error.message
+    );
+  }
+}
+
+async function getWhapiCollections(distributor) {
+  try {
+    const distributorKey = distributor.key;
+
+    const { data } = await axios.get(
+      `${WHAPI_URL}/business/collections?count=50`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${distributorKey}`,
+        },
+      }
+    );
+
+    return data;
+  } catch (error) {
+    console.error(
+      "❌ Error enviando mensaje:",
+      error.response?.data || error.message
+    );
+  }
+}
+
+module.exports = {
+  sendWhapiMessage,
+  getWhapiOrderDetail,
+  createWhapiProduct,
+  getWhapiProducts,
+  getWhapiCollections,
+};
