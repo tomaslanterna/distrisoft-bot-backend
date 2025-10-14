@@ -5,6 +5,8 @@ const {
   createDistributorProduct,
   getDistributorProducts,
   getDistributorCollections,
+  updateDistributorCollection,
+  createDistributorCollection,
 } = require("../controllers/distributorController");
 
 const router = express.Router();
@@ -15,5 +17,8 @@ router.get("/collections", getDistributorCollections);
 
 router.post("/update", updateDistributor);
 router.post("/products/create", createDistributorProduct);
+router.post("/collection/create", createDistributorCollection);
+
+router.patch("/collection/update", updateDistributorCollection);
 
 module.exports = router;

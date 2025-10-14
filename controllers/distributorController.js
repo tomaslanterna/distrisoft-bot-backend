@@ -7,6 +7,7 @@ const {
   createWhapiProduct,
   getWhapiProducts,
   getWhapiCollections,
+  createWhapiCollection,
 } = require("../services/whatsappApiService");
 
 const updateDistributor = async (req, res) => {
@@ -170,10 +171,86 @@ const getDistributorCollections = async (req, res) => {
   }
 };
 
+const updateDistributorCollection = async (req, res) => {
+  try {
+    const { collection, distributorChannelId, productId } = req.body;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const updatedCollection = await updateWhapiCollection(
+      collection,
+      distributor,
+      productId
+    );
+
+    if (!updatedCollection) {
+      return res.status(500).json({
+        success: false,
+        message: "Error updating collection in distributor",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Collection updated successfully",
+      data: updatedCollection,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error on updateDistributorCollection",
+    });
+  }
+};
+
+const createDistributorCollection = async (req, res) => {
+  try {
+    const { collectionName, distributorChannelId, productsId } = req.body;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const createdCollection = await createWhapiCollection(
+      collectionName,
+      distributor,
+      productsId
+    );
+
+    if (!createdCollection) {
+      return res.status(500).json({
+        success: false,
+        message: "Error updating collection in distributor",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Collection updated successfully",
+      data: createdCollection,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Internal Server Error on updateDistributorCollection",
+    });
+  }
+};
+
 module.exports = {
   updateDistributor,
   getDistributorOrders,
   createDistributorProduct,
   getDistributorProducts,
   getDistributorCollections,
+  updateDistributorCollection,
+  createDistributorCollection,
 };

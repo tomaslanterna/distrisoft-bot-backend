@@ -120,10 +120,68 @@ async function getWhapiCollections(distributor) {
   }
 }
 
+async function updateWhapiCollection(collection, distributor, productId) {
+  try {
+    const distributorKey = distributor.key;
+    const response = await axios.patch(
+      `${WHAPI_URL}/business/collections/${collection.id}`,
+      {
+        body: {
+          name: collection.name,
+          add_products: [...productId],
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${distributorKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "❌ Error updating collection:",
+      error.response?.data || error.message
+    );
+  }
+}
+
+async function createWhapiCollection(collectionName, distributor, productsId) {
+  try {
+    const distributorKey = distributor.key;
+    const response = await axios.post(
+      `${WHAPI_URL}/business/collections`,
+      {
+        body: {
+          name: collectionName,
+          products: productsId,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${distributorKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "❌ Error creating collection:",
+      error.response?.data || error.message
+    );
+  }
+}
+
 module.exports = {
   sendWhapiMessage,
   getWhapiOrderDetail,
   createWhapiProduct,
   getWhapiProducts,
   getWhapiCollections,
+  updateWhapiCollection,
+  createWhapiCollection,
 };
