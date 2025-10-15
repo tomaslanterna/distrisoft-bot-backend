@@ -74,6 +74,12 @@ const getDistributorOrders = async (req, res) => {
 const createDistributorProduct = async (req, res) => {
   try {
     const { product, distributorChannelId } = req.body;
+    const productAux = {
+      ...product,
+      images: [
+        "https://tumayorferretero.net/22457-large_default/producto-generico.jpg?stp=dst-jpg_p100x100_tt6&ccb=1-7&_nc_sid=657aed&_nc_ohc=TWA13PsPgLEQ7kNvwEYeZ0x&_nc_oc=AdnuA3UpNa59pzV9v_IsjuyW4w1-UHfEbVJO9RVYo7PjlRu1Po5HQ3-lKOGTfWymMq1ATyCcBet1Fs-KT0LhpYPh&_nc_ad=z-m&_nc_cid=0&_nc_zt=23&_nc_ht=media-sea1-1.cdn.whatsapp.net&_nc_gid=yt7wRqGJtYL75gHwqaEylQ&oh=01_Q5Aa2wHIU5Ndfv-w1uOGggMYfw5PGjrqPgsnDwMXk4Zgr9wwqg&oe=68F590E6",
+      ],
+    };
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
@@ -84,7 +90,7 @@ const createDistributorProduct = async (req, res) => {
       });
     }
 
-    const createdProduct = await createWhapiProduct(product, distributor);
+    const createdProduct = await createWhapiProduct(productAux, distributor);
 
     if (!createdProduct) {
       return res.status(500).json({

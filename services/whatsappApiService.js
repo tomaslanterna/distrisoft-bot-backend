@@ -54,18 +54,19 @@ async function createWhapiProduct(product, distributor) {
   try {
     const distributorKey = distributor.key;
 
-    const { data } = await axios.post(
+    const response = await axios.post(
       `${WHAPI_URL}/business/products`,
-      { ...product },
+      product,
       {
         headers: {
           "Content-Type": "application/json",
+          accept: "application/json",
           Authorization: `Bearer ${distributorKey}`,
         },
       }
     );
 
-    return data;
+    return response.data;
   } catch (error) {
     console.error(
       "❌ Error enviando mensaje:",
