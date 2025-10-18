@@ -121,16 +121,15 @@ async function getWhapiCollections(distributor) {
   }
 }
 
-async function updateWhapiCollection(collection, distributor, productId) {
+async function updateWhapiCollection(collection, distributor, productsId) {
   try {
     const distributorKey = distributor.key;
     const response = await axios.patch(
       `${WHAPI_URL}/business/collections/${collection.id}`,
       {
-        body: {
-          name: collection.name,
-          add_products: [...productId],
-        },
+        name: collection.name,
+        remove_products: [],
+        add_products: productsId,
       },
       {
         headers: {
@@ -155,10 +154,8 @@ async function createWhapiCollection(collectionName, distributor, productsId) {
     const response = await axios.post(
       `${WHAPI_URL}/business/collections`,
       {
-        body: {
-          name: collectionName,
-          products: productsId,
-        },
+        name: collectionName,
+        products: productsId,
       },
       {
         headers: {

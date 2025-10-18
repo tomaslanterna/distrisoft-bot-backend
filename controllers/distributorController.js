@@ -8,6 +8,7 @@ const {
   getWhapiProducts,
   getWhapiCollections,
   createWhapiCollection,
+  updateWhapiCollection,
 } = require("../services/whatsappApiService");
 
 const updateDistributor = async (req, res) => {
@@ -179,7 +180,7 @@ const getDistributorCollections = async (req, res) => {
 
 const updateDistributorCollection = async (req, res) => {
   try {
-    const { collection, distributorChannelId, productId } = req.body;
+    const { collection, distributorChannelId, productsId } = req.body;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
@@ -193,7 +194,7 @@ const updateDistributorCollection = async (req, res) => {
     const updatedCollection = await updateWhapiCollection(
       collection,
       distributor,
-      productId
+      productsId
     );
 
     if (!updatedCollection) {
