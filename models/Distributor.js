@@ -31,6 +31,11 @@ const distributorSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  type: {
+    type: String,
+    required: true,
+    unique: false,
+  },
   clients: [ClientDistributor],
   createdAt: {
     type: Date,

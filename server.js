@@ -13,6 +13,7 @@ const messageRoutes = require("./routes/message.routes");
 const clientRoutes = require("./routes/clientRoutes");
 const distributorRoutes = require("./routes/distributorRoutes");
 const notifyRoutes = require("./routes/notifyRoutes");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,7 @@ app.use("/order", orderRoutes);
 // app.use("/client", clientRoutes);
 app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
+app.use("/auth", authRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {
