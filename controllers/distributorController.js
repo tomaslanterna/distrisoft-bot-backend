@@ -4,6 +4,14 @@ const {
 } = require("../services/distributorService");
 const { getOrdersByDistributorId } = require("../services/order.Service");
 const {
+  createProductDb,
+  getProductById,
+} = require("../services/product.service");
+const {
+  createCollectionDb,
+  getCollectionsDb,
+} = require("../services/collection.service");
+const {
   createWhapiProduct,
   getWhapiProducts,
   getWhapiCollections,
@@ -75,6 +83,7 @@ const getDistributorOrders = async (req, res) => {
 const createDistributorProduct = async (req, res) => {
   try {
     const { product, distributorChannelId } = req.body;
+    let createdWhapiProduct;
     const productAux = {
       ...product,
       images: [
@@ -91,7 +100,14 @@ const createDistributorProduct = async (req, res) => {
       });
     }
 
-    const createdProduct = await createWhapiProduct(productAux, distributor);
+    if (distributor.type === "distributor") {
+      createdWhapiProduct = await createWhapiProduct(productAux, distributor);
+    }
+
+    const createdProduct = await createProductDb({
+      ...productAux,
+      id: product.product_retailer_id,
+    });
 
     if (!createdProduct) {
       return res.status(500).json({
@@ -102,7 +118,7 @@ const createDistributorProduct = async (req, res) => {
 
     return res.status(200).json({
       message: "Product created successfully",
-      data: createdProduct,
+      data: { createdProduct, createdWhapiProduct },
     });
   } catch (error) {
     return res
@@ -144,10 +160,42 @@ const getDistributorProducts = async (req, res) => {
   }
 };
 
+const decorateCollections = async (collections) => {
+  const decoratedCollections = await Promise.all(
+    collections.map(async (collection) => {
+      const products = await Promise.all(
+        collection.productsIds.map(async (productId) => {
+          try {
+            const productData = await getProductById(productId);
+            return productData;
+          } catch (err) {
+            console.error(`Error al obtener producto ${productId}:`, err);
+            return null; // o podrías filtrar los nulls más adelante
+          }
+        })
+      );
+
+      return {
+        id: collection.id,
+        name: collection.name,
+        products,
+        status: "",
+      };
+    })
+  );
+
+  return {
+    collections: decoratedCollections,
+    count: decoratedCollections.length,
+    total: 0,
+    offset: 0,
+  };
+};
+
 const getDistributorCollections = async (req, res) => {
   try {
     const { distributorChannelId } = req.query;
-
+    let distributorCollections;
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
     if (!distributor) {
@@ -157,7 +205,16 @@ const getDistributorCollections = async (req, res) => {
       });
     }
 
-    const distributorCollections = await getWhapiCollections(distributor);
+    if (distributor.type === "distributor") {
+      distributorCollections = await getWhapiCollections(distributor);
+    } else {
+      const distributorCollectionsBase = await getCollectionsDb(
+        distributor._id
+      );
+      distributorCollections = await decorateCollections(
+        distributorCollectionsBase
+      );
+    }
 
     if (!distributorCollections) {
       return res.status(500).json({
@@ -217,7 +274,13 @@ const updateDistributorCollection = async (req, res) => {
 
 const createDistributorCollection = async (req, res) => {
   try {
-    const { collectionName, distributorChannelId, productsId } = req.body;
+    const {
+      collectionName,
+      distributorChannelId,
+      productsId,
+      productsRetailersIds,
+    } = req.body;
+    let createdCollection;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
@@ -228,11 +291,19 @@ const createDistributorCollection = async (req, res) => {
       });
     }
 
-    const createdCollection = await createWhapiCollection(
-      collectionName,
-      distributor,
-      productsId
-    );
+    if (distributor.type == "distributor") {
+      createdCollection = await createWhapiCollection(
+        collectionName,
+        distributor,
+        productsId
+      );
+    } else {
+      createdCollection = await createCollectionDb({
+        name: collectionName,
+        distributor: distributor._id,
+        productsIds: productsRetailersIds,
+      });
+    }
 
     if (!createdCollection) {
       return res.status(500).json({
@@ -243,7 +314,7 @@ const createDistributorCollection = async (req, res) => {
 
     return res.status(200).json({
       message: "Collection updated successfully",
-      data: createdCollection,
+      data: { createdCollection },
     });
   } catch (error) {
     return res.status(500).json({

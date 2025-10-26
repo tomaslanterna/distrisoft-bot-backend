@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { Product } = require("./Product");
+const { ItemOrder } = require("./ItemOrder");
 
 const orderSchema = new mongoose.Schema({
   orderWppId: {
@@ -35,7 +35,7 @@ const orderSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
-  products: [Product],
+  products: [ItemOrder],
   total: {
     type: Number,
     required: true,

@@ -5,26 +5,22 @@ const distributorSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     index: true,
   },
   phone: {
     type: String,
     required: true,
-    unique: true,
     trim: true,
     index: true,
   },
   orderPhone: {
     type: String,
     required: true,
-    unique: true,
   },
   key: {
     type: String,
     required: true,
-    unique: true,
   },
   channelId: {
     type: String,
