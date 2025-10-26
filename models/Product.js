@@ -14,6 +14,12 @@ const productSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  distributor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Distributor",
+    required: false,
+    index: true,
+  },
   currency: {
     type: String,
     enum: ["USD", "UYU", "ARS", "EUR"], // podés ajustar los tipos de moneda válidos

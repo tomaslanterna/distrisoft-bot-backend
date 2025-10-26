@@ -9,6 +9,8 @@ const generateToken = (user) => {
       id: user._id,
       username: user.username,
       role: user.role,
+      distributorChannelId: user.distributorChannelId,
+      distributorId: user.distributor,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }

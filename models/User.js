@@ -22,6 +22,12 @@ const userSchema = new mongoose.Schema({
     required: false,
     default: null,
   },
+  distributor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Distributor",
+    required: false,
+    index: true,
+  },
 });
 
 userSchema.pre("save", async function (next) {
