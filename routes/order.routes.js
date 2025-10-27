@@ -8,7 +8,7 @@ const {
 const router = express.Router();
 
 router.get("/id", getOrderById);
-router.post("/", createOrderByDistributor);
+router.post("/create", createOrderByDistributor);
 router.post("/status", updateOrderStatusById);
 
 module.exports = router;

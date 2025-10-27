@@ -7,6 +7,7 @@ const {
   updateOrderStatusByOrderId,
   createOrder,
 } = require("../services/order.Service");
+const { v4: uuidv4 } = require("uuid");
 
 const getOrderById = async (req, res) => {
   try {
@@ -67,6 +68,7 @@ const updateOrderStatusById = async (req, res) => {
 const createOrderByDistributor = async (req, res) => {
   try {
     const { order, distributorChannelId, clientName, spaceBusiness } = req.body;
+    const date = new Date().toISOString();
     const orderDate = new Date(date);
 
     if (!order) {
@@ -84,7 +86,7 @@ const createOrderByDistributor = async (req, res) => {
 
     const parsedOrder = buildOrder(order, order.items);
     const clientId = new mongoose.Types.ObjectId();
-    const orderId = new mongoose.Types.ObjectId();
+    const orderId = uuidv4();
 
     const createdOrder = await createOrder({
       message: parsedOrder.message,
@@ -105,7 +107,7 @@ const createOrderByDistributor = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: "Collection updated successfully",
+      message: "Order created successfully",
       data: { createdOrder },
     });
   } catch (error) {
