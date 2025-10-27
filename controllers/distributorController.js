@@ -6,10 +6,12 @@ const { getOrdersByDistributorId } = require("../services/order.Service");
 const {
   createProductDb,
   getProductById,
+  getProductsByDistributorId,
 } = require("../services/product.service");
 const {
   createCollectionDb,
   getCollectionsDb,
+  updateCollectionDb,
 } = require("../services/collection.service");
 const {
   createWhapiProduct,
@@ -106,6 +108,7 @@ const createDistributorProduct = async (req, res) => {
 
     const createdProduct = await createProductDb({
       ...productAux,
+      distributor: distributor._id,
       id: product.product_retailer_id,
     });
 
@@ -132,6 +135,8 @@ const getDistributorProducts = async (req, res) => {
     const { distributorChannelId } = req.query;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
+    let distributorProducts;
+    let dbProducts;
 
     if (!distributor) {
       return res.status(400).json({
@@ -140,7 +145,17 @@ const getDistributorProducts = async (req, res) => {
       });
     }
 
-    const distributorProducts = await getWhapiProducts(distributor);
+    if (distributor.type == "distributor") {
+      distributorProducts = await getWhapiProducts(distributor);
+    } else {
+      dbProducts = await getProductsByDistributorId(distributor._id);
+      distributorProducts = {
+        products: dbProducts,
+        count: dbProducts.length,
+        total: 0,
+        offset: 0,
+      };
+    }
 
     if (!distributorProducts) {
       return res.status(500).json({
@@ -237,9 +252,15 @@ const getDistributorCollections = async (req, res) => {
 
 const updateDistributorCollection = async (req, res) => {
   try {
-    const { collection, distributorChannelId, productsId } = req.body;
+    const {
+      collection,
+      distributorChannelId,
+      productsId,
+      productsRetailersIds,
+    } = req.body;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
+    let updatedCollection;
 
     if (!distributor) {
       return res.status(400).json({
@@ -248,11 +269,19 @@ const updateDistributorCollection = async (req, res) => {
       });
     }
 
-    const updatedCollection = await updateWhapiCollection(
-      collection,
-      distributor,
-      productsId
-    );
+    if (distributor.type === "distributor") {
+      updatedCollection = await updateWhapiCollection(
+        collection,
+        distributor,
+        productsId
+      );
+    } else {
+      updatedCollection = await updateCollectionDb(
+        collection,
+        distributor._id,
+        productsRetailersIds
+      );
+    }
 
     if (!updatedCollection) {
       return res.status(500).json({
