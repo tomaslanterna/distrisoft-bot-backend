@@ -44,6 +44,10 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: "pending",
   },
+  spaceBusiness: {
+    type: String,
+    default: "none",
+  },
   createdAt: {
     type: Date,
     default: Date.now,

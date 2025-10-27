@@ -1,8 +1,11 @@
+const { default: mongoose } = require("mongoose");
+const { buildOrder } = require("../builders/order.builder");
 const { getClientById } = require("../services/clientService");
-const {} = require("../services/distributorService");
+const { getDistributorByChannelId } = require("../services/distributorService");
 const {
   getOrderByObjectId,
   updateOrderStatusByOrderId,
+  createOrder,
 } = require("../services/order.Service");
 
 const getOrderById = async (req, res) => {
@@ -61,7 +64,59 @@ const updateOrderStatusById = async (req, res) => {
   }
 };
 
+const createOrderByDistributor = async (req, res) => {
+  try {
+    const { order, distributorChannelId, clientName, spaceBusiness } = req.body;
+    const orderDate = new Date(date);
+
+    if (!order) {
+      return res.status(403).json({ message: "Order not found" });
+    }
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const parsedOrder = buildOrder(order, order.items);
+    const clientId = new mongoose.Types.ObjectId();
+    const orderId = new mongoose.Types.ObjectId();
+
+    const createdOrder = await createOrder({
+      message: parsedOrder.message,
+      date: orderDate,
+      client: { id: clientId, name: clientName },
+      orderWppId: orderId,
+      products: order.products,
+      total: order.total,
+      distributor: distributor._id,
+      spaceBusiness,
+    });
+
+    if (!createdOrder) {
+      return res.status(500).json({
+        success: false,
+        message: "Error creating order in createOrder",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Collection updated successfully",
+      data: { createdOrder },
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Internal Server Error on create order" });
+  }
+};
+
 module.exports = {
   getOrderById,
   updateOrderStatusById,
+  createOrderByDistributor,
 };

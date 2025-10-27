@@ -57,7 +57,7 @@ const buildOrder = (orderFromMessage, orderItems) => {
     `\nTotal: $${orderFromMessage.total_price}`;
 
   const order = {
-    orderWppId: orderFromMessage.order_id,
+    orderWppId: orderFromMessage?.order_id || "",
     products: orderItems.map((item) => ({
       name: item.name,
       quantity: item.quantity,
