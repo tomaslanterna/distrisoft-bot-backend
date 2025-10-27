@@ -50,11 +50,19 @@ const buildOrderMessage = (body) => {
 
 const buildOrder = (orderFromMessage, orderItems) => {
   if (!orderFromMessage) return {};
+  let total = orderFromMessage?.total_price;
+
+  if (!total) {
+    total = orderItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0
+    );
+  }
 
   const message =
     "Recibimos:\n" +
     orderItems.map((item) => `${item.quantity} x ${item.name}`).join("\n") +
-    `\nTotal: $${orderFromMessage.total_price}`;
+    `\nTotal: $${total}`;
 
   const order = {
     orderWppId: orderFromMessage?.order_id || "",
@@ -64,7 +72,7 @@ const buildOrder = (orderFromMessage, orderItems) => {
       price: item.price,
     })),
     message,
-    total: parseFloat(orderFromMessage.total_price),
+    total: parseFloat(total),
   };
   return order;
 };
