@@ -91,8 +91,8 @@ const createOrderByDistributor = async (req, res) => {
       date: orderDate,
       client: { id: clientId, name: clientName },
       orderWppId: orderId,
-      products: order.products,
-      total: order.total,
+      products: parsedOrder.products,
+      total: parsedOrder.total,
       distributor: distributor._id,
       spaceBusiness,
     });
