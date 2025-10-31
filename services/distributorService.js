@@ -1,3 +1,4 @@
+const { default: mongoose } = require("mongoose");
 const Distributor = require("../models/Distributor");
 
 const getDistributorByPhone = async (distributorPhone) => {
@@ -19,9 +20,15 @@ const getAllDistributors = async () => {
   return await Distributor.find({});
 };
 
+const getDistributorById = async (distributorId) => {
+  const distributorObjectId = new mongoose.Types.ObjectId(distributorId);
+  return await Distributor.findOne({ _id: distributorObjectId }).lean();
+};
+
 module.exports = {
   getDistributorByPhone,
   getDistributorByChannelId,
   updateDistributorByPhone,
   getAllDistributors,
+  getDistributorById,
 };

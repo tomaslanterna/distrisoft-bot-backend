@@ -21,6 +21,7 @@ async function sendWhapiMessage(to, message, distributor) {
     );
 
     console.log("✅ Mensaje enviado:", response.data);
+    return response.data;
   } catch (error) {
     console.error(
       "❌ Error enviando mensaje:",

@@ -30,6 +30,16 @@ const bulkClientsController = async (req, res) => {
   }
 };
 
+const getClientsByDistributorId = async (req, res) => {
+  const { distributorId } = req.query;
+  if (!distributorId) {
+    return res.status(403).json({ message: "DistributorId not found" });
+  }
+
+  
+};
+
 module.exports = {
   bulkClientsController,
+  getClientsByDistributorId,
 };

@@ -15,20 +15,37 @@ async function notifyClients(req, res) {
     const tomorrowDay = getTomorrowDay();
 
     const distributors = await getAllDistributors();
+    const contacts = [
+      { name: "LA FAMILIA ST", phone: "59895911124" },
+      { name: "LA FAMILIA EM", phone: "59899023141" },
+      { name: "OHANA 56", phone: "59898312112" },
+      { name: "PRIMAVERA", phone: "59897230743" },
+      { name: "ANFELU", phone: "59891355352" },
+      { name: "AGUADA", phone: "59894936250" },
+      { name: "BRASILIA", phone: "59892770614" },
+      { name: "FEVI", phone: "59893953856" },
+      { name: "LA PAZ", phone: "59897520707" },
+      { name: "FULL 24 HS", phone: "59895119385" },
+      { name: "MARIA", phone: "59894900091" },
+      { name: "VERY GOOD", phone: "59893364234" },
+      { name: "SUPERFRUTAS", phone: "59894130883" },
+      { name: "VINTAGE", phone: "59891759420" },
+      { name: "LA TENTACIÓN ROBINSON", phone: "59897628375" },
+      { name: "SILVIA", phone: "59898912012" },
+      { name: "SUERTE EN PILA", phone: "59895310567" },
+      { name: "LUJI", phone: "59894699162" },
+      { name: "LA TENTACION", phone: "59894596022" },
+      { name: "TOMI", phone: "59892356335" },
+      { name: "BRUNO", phone: "59891310235" },
+    ];
 
     for (const distributor of distributors) {
-      for (const client of distributor.clients) {
-        if (
-          client.distributionDayOfWeek.toLowerCase() ===
-          tomorrowDay.toLowerCase()
-        ) {
-          const message = `👋 Hola ${client.name}, te recordamos que ${distributor.name} pasará mañana por tu zona.🚚`;
-          const message2 = `📦 Ya puedes realizar tu pedido ingresando a nuestro catalogo\n https://wa.me/c/${distributor.phone}`;
-          await Promise.all([
-            await sendWhapiMessage(client.phone, message, distributor),
-            await sendWhapiMessage(client.phone, message2, distributor),
-          ]);
-        }
+      for (const client of contacts) {
+        const message = `👋 Hola ${client.name}, te recordamos que ${distributor.name} pasará mañana por tu zona.🚚`;
+        const message2 = `📦 Ya puedes realizar tu pedido ingresando a nuestro catalogo\n https://wa.me/c/${distributor.phone}`;
+
+        await sendWhapiMessage(client.phone, message, distributor);
+        await sendWhapiMessage(client.phone, message2, distributor);
       }
     }
 
