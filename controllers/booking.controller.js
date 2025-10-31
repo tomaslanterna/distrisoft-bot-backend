@@ -1,13 +1,67 @@
+const { buildBooking } = require("../builders/booking.builder");
 const bookingService = require("../services/booking.service");
+const { getDistributorByChannelId } = require("../services/distributorService");
 
 const createBookingController = async (req, res) => {
   try {
-    const { booking } = req.body;
+    const {
+      distributorChannelId,
+      clientName,
+      clientPhone,
+      date,
+      time,
+      entityId,
+      description,
+      status,
+    } = req.body;
 
-    const createdBooking = await bookingService.createBooking(booking);
-    res.status(201).json({
+    if (
+      !distributorChannelId ||
+      !clientName ||
+      !clientPhone ||
+      !date ||
+      !time ||
+      !entityId
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Error in createBooking one of this are needed distributorChannelId,clientName,clientPhone,date,time,entityId",
+      });
+    }
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const bookingToCreate = buildBooking({
+      distributor,
+      clientName,
+      clientPhone,
+      date,
+      time,
+      entityId,
+      description,
+      status,
+    });
+
+    const createdBooking = await bookingService.createBooking(bookingToCreate);
+
+    if (!createdBooking) {
+      return res.status(500).json({
+        success: false,
+        message: "Error in createBooking",
+      });
+    }
+
+    return res.status(200).json({
       success: true,
-      message: "Reserva creada exitosamente",
+      message: "Booking created succeffuly",
       data: createdBooking,
     });
   } catch (error) {
@@ -18,14 +72,47 @@ const createBookingController = async (req, res) => {
 
 const getBookingsByDistributorController = async (req, res) => {
   try {
-    const { distributorId } = req.params;
+    const { distributorChannelId, entityId, rangeDate } = req.params;
+    const dates = rangeDate.split("-");
+    const startDate = new Date(dates[0]);
+    const endDate = new Date(dates[1]);
+
+    if (!distributorChannelId || !entityId || !rangeDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    if (!entityId) {
+      res.status(400).json({
+        success: false,
+        message: "Error entityId is needed",
+      });
+    }
+
     const bookings = await bookingService.getBookingsByDistributor(
-      distributorId
+      distributor._id,
+      entityId
     );
 
-    res.status(200).json({
+    const bookingsForRangeDate = bookings.filter((book) => {
+      const itemDate = new Date(book.date);
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+
+    return res.status(200).json({
       success: true,
-      data: bookings,
+      data: bookingsForRangeDate,
     });
   } catch (error) {
     console.error("Error en getBookingsByDistributorController:", error);
@@ -48,7 +135,7 @@ const updateBookingController = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Reserva actualizada correctamente",
       data: updatedBooking,

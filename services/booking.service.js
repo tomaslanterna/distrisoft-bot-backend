@@ -17,9 +17,9 @@ const createBooking = async (bookingData) => {
 /**
  * Obtener todas las bookings por distributorId
  */
-const getBookingsByDistributor = async (distributorId) => {
+const getBookingsByDistributor = async (distributorId, entityId) => {
   try {
-    return await Booking.find({ distributorId }).sort({ date: -1 });
+    return await Booking.find({ distributorId, entityId }).sort({ date: -1 });
   } catch (error) {
     console.error("Error en getBookingsByDistributor:", error);
     throw new Error("Error al obtener las reservas");
