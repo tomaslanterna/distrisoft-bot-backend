@@ -1,7 +1,10 @@
 const { default: mongoose } = require("mongoose");
 const { buildOrder } = require("../builders/order.builder");
 const { getClientById } = require("../services/clientService");
-const { getDistributorByChannelId } = require("../services/distributorService");
+const {
+  getDistributorByChannelId,
+  getDistributorByObjectId,
+} = require("../services/distributorService");
 const {
   getOrderByObjectId,
   updateOrderStatusByOrderId,
@@ -12,6 +15,7 @@ const { v4: uuidv4 } = require("uuid");
 const getOrderById = async (req, res) => {
   try {
     const { orderId } = req.query;
+    let clientOrder;
 
     if (!orderId) {
       return res.status(403).json({ message: "OrderId not found" });
@@ -23,7 +27,17 @@ const getOrderById = async (req, res) => {
       return res.status(404).json({ message: "Error order not found" });
     }
 
-    const clientOrder = await getClientById(order.client.id);
+    const distributor = await getDistributorByObjectId(order.distributor);
+
+    if (!distributor) {
+      return res.status(404).json({ message: "Error distributor not found" });
+    }
+
+    if (distributor.type === "distributor") {
+      clientOrder = await getClientById(order.client.id);
+    } else {
+      clientOrder = order.client;
+    }
 
     if (!clientOrder) {
       return res

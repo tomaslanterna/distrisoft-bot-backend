@@ -12,6 +12,7 @@ const {
   createCollectionDb,
   getCollectionsDb,
   updateCollectionDb,
+  deleteCollectionDb,
 } = require("../services/collection.service");
 const {
   createWhapiProduct,
@@ -211,6 +212,7 @@ const getDistributorCollections = async (req, res) => {
   try {
     const { distributorChannelId } = req.query;
     let distributorCollections;
+    let distributorCollectionsBase;
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
     if (!distributor) {
@@ -223,9 +225,7 @@ const getDistributorCollections = async (req, res) => {
     if (distributor.type === "distributor") {
       distributorCollections = await getWhapiCollections(distributor);
     } else {
-      const distributorCollectionsBase = await getCollectionsDb(
-        distributor._id
-      );
+      distributorCollectionsBase = await getCollectionsDb(distributor._id);
       distributorCollections = await decorateCollections(
         distributorCollectionsBase
       );
@@ -252,12 +252,7 @@ const getDistributorCollections = async (req, res) => {
 
 const updateDistributorCollection = async (req, res) => {
   try {
-    const {
-      collection,
-      distributorChannelId,
-      productsId,
-      productsRetailersIds,
-    } = req.body;
+    const { collection, distributorChannelId, productsId } = req.body;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
     let updatedCollection;
@@ -279,7 +274,7 @@ const updateDistributorCollection = async (req, res) => {
       updatedCollection = await updateCollectionDb(
         collection,
         distributor._id,
-        productsRetailersIds
+        productsId
       );
     }
 
@@ -330,7 +325,7 @@ const createDistributorCollection = async (req, res) => {
       createdCollection = await createCollectionDb({
         name: collectionName,
         distributor: distributor._id,
-        productsIds: productsRetailersIds,
+        productsIds: productsId,
       });
     }
 
@@ -352,6 +347,38 @@ const createDistributorCollection = async (req, res) => {
   }
 };
 
+const deleteDistributorCollection = async (req, res) => {
+  try {
+    const { collectionName, distributorChannelId } = req.body;
+
+    const distributor = await getDistributorByChannelId(distributorChannelId);
+
+    if (!distributor) {
+      return res.status(400).json({
+        success: false,
+        message: "Error in getDistributorByChannelId",
+      });
+    }
+
+    const deletedCollection = await deleteCollectionDb(
+      collectionName,
+      distributor._id
+    );
+
+    if (!deletedCollection) {
+      return { success: false, message: "Collection not found" };
+    }
+
+    return res.status(200).json({
+      message: "Collection deleted successfully",
+      data: deletedCollection,
+    });
+  } catch (error) {
+    console.error("Error deleting collection:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   updateDistributor,
   getDistributorOrders,
@@ -360,4 +387,5 @@ module.exports = {
   getDistributorCollections,
   updateDistributorCollection,
   createDistributorCollection,
+  deleteDistributorCollection,
 };

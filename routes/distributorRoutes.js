@@ -7,6 +7,7 @@ const {
   getDistributorCollections,
   updateDistributorCollection,
   createDistributorCollection,
+  deleteDistributorCollection,
 } = require("../controllers/distributorController");
 
 const router = express.Router();
@@ -20,5 +21,7 @@ router.post("/products/create", createDistributorProduct);
 router.post("/collection/create", createDistributorCollection);
 
 router.patch("/collection/update", updateDistributorCollection);
+
+router.delete("/collection/delete", deleteDistributorCollection);
 
 module.exports = router;

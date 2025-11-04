@@ -19,9 +19,14 @@ const getAllDistributors = async () => {
   return await Distributor.find({});
 };
 
+const getDistributorByObjectId = async (distributorId) => {
+  return await Distributor.findOne({ _id: distributorId }).lean();
+};
+
 module.exports = {
   getDistributorByPhone,
   getDistributorByChannelId,
   updateDistributorByPhone,
   getAllDistributors,
+  getDistributorByObjectId,
 };

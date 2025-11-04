@@ -13,27 +13,35 @@ const getCollectionsDb = async (distributorId) => {
 
 const getCollectionByDistributorIdDb = async (distributorId, name) => {
   const distributorObjectId = new mongoose.Types.ObjectId(distributorId);
-  return await Collection.findOne({ distributor: distributorObjectId }).lean();
+  return await Collection.findOne({
+    distributor: distributorObjectId,
+    name: { $regex: new RegExp(`^${name}$`, "i") },
+  }).lean();
 };
 
 const updateCollectionDb = async (collection, distributorId, productsIds) => {
   const distributorObjectId = new mongoose.Types.ObjectId(distributorId);
-  const collectionDb = await getCollectionByDistributorIdDb(
-    distributorId,
-    collection.name
+  return await Collection.findOneAndUpdate(
+    {
+      distributor: distributorObjectId,
+      name: { $regex: new RegExp(`^${collection.name}$`, "i") },
+    },
+    { $push: { productsIds: productsIds } },
+    { new: true } // devuelve el documento actualizado
   );
-  const newCollection = {
-    ...collectionDb,
-    productsIds: [...collectionDb.productsIds, ...productsIds],
-  };
-  return await Collection.updateOne(
-    { distributor: distributorObjectId },
-    { $set: newCollection }
-  );
+};
+
+const deleteCollectionDb = async (collectionName, distributorId) => {
+  const distributorObjectId = new mongoose.Types.ObjectId(distributorId);
+  return await Collection.findOneAndDelete({
+    distributor: distributorObjectId,
+    name: { $regex: new RegExp(`^${collectionName}$`, "i") },
+  });
 };
 
 module.exports = {
   createCollectionDb,
   getCollectionsDb,
   updateCollectionDb,
+  deleteCollectionDb,
 };
