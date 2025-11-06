@@ -20,7 +20,9 @@ const {
   getWhapiCollections,
   createWhapiCollection,
   updateWhapiCollection,
+  deleteWhapiCollection,
 } = require("../services/whatsappApiService");
+const fs = require("fs");
 
 const updateDistributor = async (req, res) => {
   try {
@@ -349,7 +351,9 @@ const createDistributorCollection = async (req, res) => {
 
 const deleteDistributorCollection = async (req, res) => {
   try {
-    const { collectionName, distributorChannelId } = req.body;
+    const { collectionName, distributorChannelId, collectionId } = req.body;
+
+    let deletedCollection = null;
 
     const distributor = await getDistributorByChannelId(distributorChannelId);
 
@@ -360,10 +364,17 @@ const deleteDistributorCollection = async (req, res) => {
       });
     }
 
-    const deletedCollection = await deleteCollectionDb(
-      collectionName,
-      distributor._id
-    );
+    if (distributor.type === "distributor") {
+      deletedCollection = await deleteWhapiCollection(
+        collectionId,
+        distributor
+      );
+    } else {
+      deletedCollection = await deleteCollectionDb(
+        collectionName,
+        distributor._id
+      );
+    }
 
     if (!deletedCollection) {
       return { success: false, message: "Collection not found" };
@@ -379,6 +390,37 @@ const deleteDistributorCollection = async (req, res) => {
   }
 };
 
+const uploadDistributorImages = async (req, res) => {
+  try {
+    const { files, cloudinary } = req;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: "No images provided" });
+    }
+
+    // Subir cada imagen a Cloudinary
+    const uploadPromises = files.map((file) =>
+      cloudinary.uploader.upload(file.path, {
+        folder: "servizio", // opcional: nombre de carpeta en Cloudinary
+      })
+    );
+
+    const results = await Promise.all(uploadPromises);
+
+    // Borrar archivos temporales locales
+    files.forEach((file) => fs.unlinkSync(file.path));
+
+    // Enviar URLs resultantes
+    res.json({
+      message: "Images uploaded successfully",
+      images: results.map((r) => r.secure_url),
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ message: "Error uploading images" });
+  }
+};
+
 module.exports = {
   updateDistributor,
   getDistributorOrders,
@@ -388,4 +430,5 @@ module.exports = {
   updateDistributorCollection,
   createDistributorCollection,
   deleteDistributorCollection,
+  uploadDistributorImages,
 };

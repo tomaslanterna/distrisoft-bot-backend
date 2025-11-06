@@ -174,6 +174,28 @@ async function createWhapiCollection(collectionName, distributor, productsId) {
   }
 }
 
+async function deleteWhapiCollection(collectionId, distributor) {
+  try {
+    const distributorKey = distributor.key;
+    const response = await axios.delete(
+      `${WHAPI_URL}/business/collections/${collectionId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${distributorKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "❌ Error creating collection:",
+      error.response?.data || error.message
+    );
+  }
+}
+
 module.exports = {
   sendWhapiMessage,
   getWhapiOrderDetail,
@@ -182,4 +204,5 @@ module.exports = {
   getWhapiCollections,
   updateWhapiCollection,
   createWhapiCollection,
+  deleteWhapiCollection,
 };
