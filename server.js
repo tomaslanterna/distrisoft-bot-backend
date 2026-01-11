@@ -15,6 +15,7 @@ const distributorRoutes = require("./routes/distributorRoutes");
 const notifyRoutes = require("./routes/notifyRoutes");
 const authRoutes = require("./routes/auth.routes");
 const bookingRoutes = require("./routes/booking.routes");
+const inspectionRoutes = require("./routes/inspection.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +33,7 @@ app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
 app.use("/auth", authRoutes);
 app.use("/booking", bookingRoutes);
+app.use("/inspection", inspectionRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

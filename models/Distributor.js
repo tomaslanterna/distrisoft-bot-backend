@@ -33,6 +33,12 @@ const distributorSchema = new mongoose.Schema({
     unique: false,
   },
   clients: [ClientDistributor],
+  entities: [
+    {
+      id: { type: Number, required: false },
+      name: { type: String, required: false },
+    },
+  ],
   createdAt: {
     type: Date,
     default: Date.now,

@@ -392,7 +392,8 @@ const deleteDistributorCollection = async (req, res) => {
 
 const uploadDistributorImages = async (req, res) => {
   try {
-    const { files, cloudinary } = req;
+    const { cloudinary, body } = req;
+    const { files } = body;
 
     if (!files || files.length === 0) {
       return res.status(400).json({ message: "No images provided" });
