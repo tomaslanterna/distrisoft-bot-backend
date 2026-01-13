@@ -414,7 +414,7 @@ const confirmInspectionController = async (req, res) => {
 const getInspectionsByTypeController = async (req, res) => {
   try {
     const { type } = req.params;
-    const user = req.user;
+    const user = { ...req.user, distributor: "6963fee4005e60c8a24edf6d" };
 
     if (!type) {
       return res.status(400).json({
