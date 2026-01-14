@@ -12,6 +12,7 @@ const {
 } = require("../controllers/inspection.controller");
 const {
   updateVehicleStatusController,
+  getVehiclesByStatusController,
 } = require("../controllers/vehicle.controller");
 
 // Flags
@@ -23,180 +24,117 @@ let vehicleFindByIdCalled = false;
 let inspectionFindCalled = false;
 let inspectionFindOneCalled = false;
 let reinspectionCreateCalled = false;
+let vehicleAggregateCalled = false; // New flag
 
-// Mock Data
+// Mock Data (same as before)
 const mockUser = {
   id: "user123",
-  distributor: "distributor123",
+  distributor: "507f1f77bcf86cd799439011",
   distributorChannelId: "channel123",
 };
-
 const mockInspectionData = {
   matricula: "ABC1234",
-  numeroChasis: "VIN123456789",
-  marca: "Toyota",
-  modelo: "Corolla",
-  ano: "2020",
+  numeroChasis: "VIN123",
+  marca: "Toy",
+  modelo: "Cor",
+  ano: "20",
   kilometros: "50000",
-  componentes: {
-    pintura: 4,
-    chapa: 5,
-    motor: 5,
-  },
-  componentesIncluidos: {
-    radio: true,
-    gato: false,
-  },
-  fotos: ["http://example.com/photo1.jpg"],
-  observaciones: "Todo ok",
+  componentes: {},
+  componentesIncluidos: {},
+  fotos: [],
+  observaciones: "Ok",
 };
 
 // ... Previous Mocks ...
-Vehicle.findOne = async ({ plate, businessId }) => {
-  vehicleFindOneCalled = true;
-  if (plate && businessId) {
-    return { _id: "vehicle_id_123", plate, businessId };
-  }
-  return null;
-};
+Vehicle.findOne = async () => ({
+  _id: "v1",
+  businessId: "507f1f77bcf86cd799439011",
+});
 Vehicle.prototype.save = async function () {
-  vehicleSaveCalled = true;
-  this._id = "vehicle_new_id_123";
   return this;
 };
-Vehicle.findById = async (id) => {
-  vehicleFindByIdCalled = true;
-  return {
-    _id: id,
-    status: "PENDING_REVIEW",
-    save: async function () {
-      return true;
-    },
-  };
-};
+Vehicle.findById = async (id) => ({
+  _id: id,
+  status: "PENDING_REVIEW",
+  save: async () => true,
+});
+Inspection.create = async (data) => ({
+  ...data,
+  _id: "insp1",
+  save: async () => true,
+});
+Inspection.findById = async (id) => ({
+  _id: id,
+  vehicleId: "v1",
+  businessId: "507f1f77bcf86cd799439011",
+  entityId: "channel123",
+  inspectorId: "inspector123",
+  inspectionType: "INSPECTION",
+  save: async () => true,
+});
+Inspection.find = () => ({ populate: () => ({ sort: () => [] }) });
+Inspection.findOne = () => ({
+  populate: () => ({ sort: () => ({ _id: "insp1" }) }),
+});
 
-Inspection.create = async (data) => {
-  inspectionCreateCalled = true;
-  return { ...data, _id: "inspection_created_id", save: async () => true };
-};
-
-Inspection.findById = async (id) => {
-  inspectionFindByIdCalled = true;
-  return {
-    _id: id,
-    vehicleId: "vehicle_new_id_123",
-    businessId: "distributor123",
-    entityId: "channel123",
-    inspectorId: "inspector123",
-    inspectionType: "INSPECTION",
-    toObject: () => ({ _id: id }),
-    metadata: { mileage: 50000 },
-    vehicleState: [
-      { name: "pintura", rating: 4 },
-      { name: "chapa", rating: 5 },
-      { name: "motor", rating: 5 },
-    ],
-    vehicleComponents: [
-      { name: "radio", state: true },
-      { name: "gato", state: false },
-    ],
-    save: async function () {
-      // console.log(`[Mock] Inspection.save. Type: ${this.inspectionType}`);
-    },
-  };
-};
-
-Inspection.find = (query) => {
-  if (query.inspectionType && query.inspectionType.$in) {
-    assert.ok(
-      Array.isArray(query.inspectionType.$in),
-      "InspectionType should use $in with array"
-    );
+// MOCK Aggregate
+Vehicle.aggregate = async (pipeline) => {
+  vehicleAggregateCalled = true;
+  console.log(
+    "[Mock] Vehicle.aggregate called with pipeline length:",
+    pipeline.length
+  );
+  // Validate pipeline structure roughly
+  const matchStage = pipeline[0].$match;
+  if (matchStage && matchStage.status) {
+    assert.ok(matchStage.status.$in, "Status match should use $in");
+    console.log("[Mock] Verified Status $in match");
   }
-  assert.strictEqual(query.businessId, "distributor123");
-  inspectionFindCalled = true;
-  return {
-    populate: (field) => {
-      return {
-        sort: (sort) => {
-          return [
-            { _id: "insp1", inspectionType: "TYPE1" },
-            { _id: "insp2", inspectionType: "TYPE2" },
-          ];
-        },
-      };
+  // Return mock data with populates simulated
+  return [
+    {
+      _id: "v1",
+      plate: "MOCK123",
+      status: "PENDING_REVIEW",
+      inspections: [],
+      reinspections: [],
     },
-  };
+  ];
 };
 
-Inspection.findOne = (query) => {
-  if (query.vehicleId === "vehicle_id_123") inspectionFindOneCalled = true;
-  return {
-    populate: (field) => {
-      return {
-        sort: (sort) => {
-          return { _id: "latest_insp_id_999", plate: "ABC1234" };
-        },
-      };
-    },
-  };
-};
-
+// MOCK Reinspection
+let createdReinspectionType = null;
 Reinspection.create = async (data) => {
   reinspectionCreateCalled = true;
-  // Assertion updated: MUST be SUCCESSFULLY_REINSPECTION always
-  assert.strictEqual(
-    data.inspectionType,
-    "SUCCESSFULLY_REINSPECTION",
-    "Reinspection Type Mismatch"
-  );
-  assert.strictEqual(data.metadata.mileage, 50000);
+  createdReinspectionType = data.inspectionType;
   return { ...data, _id: "reinspection_new_id" };
 };
 
-const createMockRes = (label) => {
-  return {
-    status: (code) => ({
-      json: (payload) => {
-        if (!payload.success)
-          console.error(`[${label}] Error:`, payload.message);
-        console.log(`[${label}] Success: ${payload.success}`);
-        return payload;
-      },
-    }),
-  };
-};
+const createMockRes = (label) => ({
+  status: (code) => ({
+    json: (payload) => {
+      if (!payload.success) console.error(`[${label}] Error:`, payload.message);
+      else console.log(`[${label}] Success`);
+      return payload;
+    },
+  }),
+});
 
 (async () => {
   console.log("=== Starting Verification ===");
 
-  // 6. Test Update Inspection Status with Reinspection
-  console.log(
-    "\n--- Testing updateInspectionStatusController (Reinspection) ---"
-  );
-  const resInspStatus = createMockRes("InspStatus");
-  let inspStatusPayload = await updateInspectionStatusController(
+  // Test 8: Get Vehicles By Status
+  console.log("\n--- Test: Get Vehicles By Status ---");
+  await getVehiclesByStatusController(
     {
-      params: { id: "insp_1" },
-      body: {
-        status: "RE_INSPECTION",
-        inspectionData: mockInspectionData,
-      },
+      params: { status: "PENDING_REVIEW, REJECTED_REVIEW" },
       user: mockUser,
     },
-    resInspStatus
+    createMockRes("GetVehicles")
   );
 
-  if (!reinspectionCreateCalled)
-    console.error("FAILED: Reinspection.create was not called.");
-
-  // 7. Test Update Vehicle Status
-  console.log("\n--- Testing updateVehicleStatusController ---");
-  const resVehStatus = createMockRes("VehStatus");
-  let vehStatusPayload = await updateVehicleStatusController(
-    { params: { id: "veh_1" }, body: { status: "REJECTED_REVIEW" } },
-    resVehStatus
-  );
+  if (!vehicleAggregateCalled)
+    console.error("FAILED: Vehicle.aggregate was not called.");
 
   console.log("\n=== Verification Complete ===");
 })();

@@ -567,13 +567,36 @@ const updateInspectionStatusController = async (req, res) => {
         state: inspectionData.componentesIncluidos[key],
       }));
 
+      let reinspectionType = "SUCCESSFULLY_REINSPECTION"; // Default valid
+
+      if (status === "REJECTED_INSPECTION") {
+        reinspectionType = "REJECTED_REINSPECTION";
+      } else if (status === "SUCCESSFULLY_INSPECTION") {
+        reinspectionType = "SUCCESSFULLY_REINSPECTION";
+      } else {
+        // Fallback for other statuses like RE_INSPECTION or if we want to default to something else?
+        // User said: "when REJECTED... REJECTED_REINSPECTION and when SUCCESSFULLY... SUCCESSFULLY_REINSPECTION".
+        // The endpoint allows RE_INSPECTION too.
+        // If status is RE_INSPECTION, user didn't specify. Assuming "RE_INSPECTION" type or staying successful?
+        // Previously mapped RE_INSPECTION -> RE_INSPECTION.
+        // Let's assume conditional maps strictly as requested and handle others.
+        // User instruction: "cuando es REJECTED... REJECTED... y cuando es SUCCESSFULLY... SUCCESSFULLY...".
+        // What if it is `RE_INSPECTION`? The curl example used `RE_INSPECTION`.
+        // I should probably support it or default?
+        // Let's keep supporting RE_INSPECTION mapping if existing, or just default to logic requested.
+        // User request is specific about the two outcome states.
+
+        // Let's use a clear map.
+        if (status === "RE_INSPECTION") reinspectionType = "RE_INSPECTION";
+      }
+
       await Reinspection.create({
         inspectionId: inspection._id,
         businessId: inspection.businessId,
         entityId: inspection.entityId,
         vehicleId: inspection.vehicleId,
         inspectorId: user?.id || inspection.inspectorId, // fallback
-        inspectionType: "SUCCESSFULLY_REINSPECTION", // Hardcoded as requested
+        inspectionType: reinspectionType,
         metadata: {
           mileage: parseInt(inspectionData.kilometros || 0, 10),
           notes: inspectionData.observaciones,
