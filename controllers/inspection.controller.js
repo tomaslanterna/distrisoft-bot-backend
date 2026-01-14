@@ -1,10 +1,10 @@
 const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
+const { Reinspection } = require("../models/Reinspection");
 
 const createInspectionController = async (req, res) => {
   try {
     const { inspectionData, user } = req.body;
-    // const user = req.user;
 
     // 1. Data Validation (Basic)
     if (
@@ -455,9 +455,153 @@ const getInspectionsByTypeController = async (req, res) => {
   }
 };
 
+const getInspectionByPlateController = async (req, res) => {
+  try {
+    const { plate } = req.params;
+    const user = { ...req.user, distributor: "6963fee4005e60c8a24edf6d" };
+
+    if (!plate) {
+      return res.status(400).json({
+        success: false,
+        message: "La matrícula es requerida.",
+      });
+    }
+
+    const businessId = user.distributor;
+
+    // 1. Find Vehicle
+    const vehicle = await Vehicle.findOne({
+      plate: plate,
+      businessId: businessId, // Ensure we only find vehicles for this distributor
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({
+        success: false,
+        message: "Vehículo no encontrado.",
+      });
+    }
+
+    // 2. Find Latest Inspection
+    const inspection = await Inspection.findOne({
+      vehicleId: vehicle._id,
+    })
+      .populate("vehicleId", "plate brand model year")
+      .sort({ createdAt: -1 });
+
+    if (!inspection) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontraron inspecciones para este vehículo.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: inspection,
+    });
+  } catch (error) {
+    console.error("Error en getInspectionByPlateController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al obtener inspección por matrícula",
+    });
+  }
+};
+
+const updateInspectionStatusController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, inspectionData } = req.body;
+    const user = req.user;
+
+    const allowedStatuses = [
+      "INSPECTION",
+      "RE_INSPECTION",
+      "REJECTED_INSPECTION",
+      "SUCCESSFULLY_INSPECTION",
+    ];
+
+    if (!id || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "ID de inspección y estado son requeridos.",
+      });
+    }
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Estado inválido. Permitidos: ${allowedStatuses.join(", ")}`,
+      });
+    }
+
+    const inspection = await Inspection.findById(id);
+    if (!inspection) {
+      return res.status(404).json({
+        success: false,
+        message: "Inspección no encontrada.",
+      });
+    }
+
+    // Update status
+    inspection.inspectionType = status;
+    await inspection.save();
+
+    // Create Reinspection if data provided
+
+    // Create Reinspection if data provided
+    if (inspectionData) {
+      // Map components
+      const componentKeys = Object.keys(inspectionData.componentes || {});
+      const vehicleState = componentKeys.map((key) => ({
+        name: key,
+        rating: parseInt(inspectionData.componentes[key] || 0, 10),
+      }));
+
+      const checklistKeys = Object.keys(
+        inspectionData.componentesIncluidos || {}
+      );
+      const vehicleComponents = checklistKeys.map((key) => ({
+        name: key,
+        state: inspectionData.componentesIncluidos[key],
+      }));
+
+      await Reinspection.create({
+        inspectionId: inspection._id,
+        businessId: inspection.businessId,
+        entityId: inspection.entityId,
+        vehicleId: inspection.vehicleId,
+        inspectorId: user?.id || inspection.inspectorId, // fallback
+        inspectionType: "SUCCESSFULLY_REINSPECTION", // Hardcoded as requested
+        metadata: {
+          mileage: parseInt(inspectionData.kilometros || 0, 10),
+          notes: inspectionData.observaciones,
+        },
+        vehicleState: vehicleState,
+        vehicleComponents: vehicleComponents,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Estado de inspección actualizado correctamente.",
+      data: inspection,
+    });
+  } catch (error) {
+    console.error("Error en updateInspectionStatusController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al actualizar estado de la inspección",
+    });
+  }
+};
+
 module.exports = {
   createInspectionController,
   verifyInspectionController,
   confirmInspectionController,
   getInspectionsByTypeController,
+  getInspectionByPlateController,
+  updateInspectionStatusController,
 };

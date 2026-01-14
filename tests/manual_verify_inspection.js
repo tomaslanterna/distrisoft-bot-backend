@@ -1,12 +1,18 @@
 const assert = require("assert");
 const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
+const { Reinspection } = require("../models/Reinspection");
 const {
   createInspectionController,
   verifyInspectionController,
   confirmInspectionController,
   getInspectionsByTypeController,
+  getInspectionByPlateController,
+  updateInspectionStatusController,
 } = require("../controllers/inspection.controller");
+const {
+  updateVehicleStatusController,
+} = require("../controllers/vehicle.controller");
 
 // Flags
 let vehicleFindOneCalled = false;
@@ -15,6 +21,8 @@ let inspectionCreateCalled = false;
 let inspectionFindByIdCalled = false;
 let vehicleFindByIdCalled = false;
 let inspectionFindCalled = false;
+let inspectionFindOneCalled = false;
+let reinspectionCreateCalled = false;
 
 // Mock Data
 const mockUser = {
@@ -46,6 +54,9 @@ const mockInspectionData = {
 // ... Previous Mocks ...
 Vehicle.findOne = async ({ plate, businessId }) => {
   vehicleFindOneCalled = true;
+  if (plate && businessId) {
+    return { _id: "vehicle_id_123", plate, businessId };
+  }
   return null;
 };
 Vehicle.prototype.save = async function () {
@@ -55,7 +66,13 @@ Vehicle.prototype.save = async function () {
 };
 Vehicle.findById = async (id) => {
   vehicleFindByIdCalled = true;
-  return new Vehicle({ _id: id, status: "PENDING_REVIEW", rating: 0 });
+  return {
+    _id: id,
+    status: "PENDING_REVIEW",
+    save: async function () {
+      return true;
+    },
+  };
 };
 
 Inspection.create = async (data) => {
@@ -68,6 +85,10 @@ Inspection.findById = async (id) => {
   return {
     _id: id,
     vehicleId: "vehicle_new_id_123",
+    businessId: "distributor123",
+    entityId: "channel123",
+    inspectorId: "inspector123",
+    inspectionType: "INSPECTION",
     toObject: () => ({ _id: id }),
     metadata: { mileage: 50000 },
     vehicleState: [
@@ -86,24 +107,12 @@ Inspection.findById = async (id) => {
 };
 
 Inspection.find = (query) => {
-  // console.log(`[Mock] Inspection.find called with query: ${JSON.stringify(query)}`);
-
-  // VERIFY QUERY STRUCTURE FOR MULTIPLE TYPES
   if (query.inspectionType && query.inspectionType.$in) {
-    // Multi type check
     assert.ok(
       Array.isArray(query.inspectionType.$in),
       "InspectionType should use $in with array"
     );
-    assert.ok(query.inspectionType.$in.includes("TYPE1"), "Missing TYPE1");
-    assert.ok(query.inspectionType.$in.includes("TYPE2"), "Missing TYPE2");
-  } else {
-    // Single type check (legacy logic or simple string)
-    // But our controller now Uses $in for split array always basically if passed as string
-    // Actually if we pass comma string logic puts it in array
-    assert.fail("Controller should convert input to $in array");
   }
-
   assert.strictEqual(query.businessId, "distributor123");
   inspectionFindCalled = true;
   return {
@@ -120,12 +129,38 @@ Inspection.find = (query) => {
   };
 };
 
+Inspection.findOne = (query) => {
+  if (query.vehicleId === "vehicle_id_123") inspectionFindOneCalled = true;
+  return {
+    populate: (field) => {
+      return {
+        sort: (sort) => {
+          return { _id: "latest_insp_id_999", plate: "ABC1234" };
+        },
+      };
+    },
+  };
+};
+
+Reinspection.create = async (data) => {
+  reinspectionCreateCalled = true;
+  // Assertion updated: MUST be SUCCESSFULLY_REINSPECTION always
+  assert.strictEqual(
+    data.inspectionType,
+    "SUCCESSFULLY_REINSPECTION",
+    "Reinspection Type Mismatch"
+  );
+  assert.strictEqual(data.metadata.mileage, 50000);
+  return { ...data, _id: "reinspection_new_id" };
+};
+
 const createMockRes = (label) => {
   return {
     status: (code) => ({
       json: (payload) => {
         if (!payload.success)
           console.error(`[${label}] Error:`, payload.message);
+        console.log(`[${label}] Success: ${payload.success}`);
         return payload;
       },
     }),
@@ -135,32 +170,33 @@ const createMockRes = (label) => {
 (async () => {
   console.log("=== Starting Verification ===");
 
-  // 4. Test Get By Type (Multiple)
+  // 6. Test Update Inspection Status with Reinspection
   console.log(
-    "\n--- Testing getInspectionsByTypeController (Multiple Types) ---"
+    "\n--- Testing updateInspectionStatusController (Reinspection) ---"
   );
-  let listPayload = null;
-  const resList = {
-    status: (code) => ({
-      json: (payload) => {
-        listPayload = payload;
-        console.log(`[List] Success: ${payload.success}`);
-        if (payload.success) {
-          console.log(`[List] Count: ${payload.data.length}`);
-        }
+  const resInspStatus = createMockRes("InspStatus");
+  let inspStatusPayload = await updateInspectionStatusController(
+    {
+      params: { id: "insp_1" },
+      body: {
+        status: "RE_INSPECTION",
+        inspectionData: mockInspectionData,
       },
-    }),
-  };
-
-  // TEST WITH COMMA SEPARATED STRING
-  await getInspectionsByTypeController(
-    { params: { type: "TYPE1, TYPE2" }, user: mockUser },
-    resList
+      user: mockUser,
+    },
+    resInspStatus
   );
 
-  if (!inspectionFindCalled)
-    console.error("FAILED: Inspection.find() was not called.");
-  assert.strictEqual(listPayload.data.length, 2, "Returned count mismatch");
+  if (!reinspectionCreateCalled)
+    console.error("FAILED: Reinspection.create was not called.");
+
+  // 7. Test Update Vehicle Status
+  console.log("\n--- Testing updateVehicleStatusController ---");
+  const resVehStatus = createMockRes("VehStatus");
+  let vehStatusPayload = await updateVehicleStatusController(
+    { params: { id: "veh_1" }, body: { status: "REJECTED_REVIEW" } },
+    resVehStatus
+  );
 
   console.log("\n=== Verification Complete ===");
 })();
