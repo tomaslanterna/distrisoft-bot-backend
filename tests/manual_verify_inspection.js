@@ -49,8 +49,12 @@ const mockInspectionData = {
 Vehicle.findOne = async () => ({
   _id: "v1",
   businessId: "507f1f77bcf86cd799439011",
+  save: Vehicle.prototype.save, // Attach mock save
 });
+let savedVehicleRating = null;
 Vehicle.prototype.save = async function () {
+  vehicleSaveCalled = true;
+  savedVehicleRating = this.rating;
   return this;
 };
 Vehicle.findById = async (id) => ({
@@ -122,6 +126,22 @@ const createMockRes = (label) => ({
 
 (async () => {
   console.log("=== Starting Verification ===");
+
+  // Test: Create Inspection (Rating Check)
+  console.log("\n--- Test: Create Inspection (Rating) ---");
+  // Set specific ratings: 4, 5, 5 -> Average 4.66
+  mockInspectionData.componentes = { pintura: 4, chapa: 5, motor: 5 };
+
+  await createInspectionController(
+    { body: { inspectionData: mockInspectionData, user: mockUser } },
+    createMockRes("CreateInspection")
+  );
+
+  console.log("Saved Vehicle Rating:", savedVehicleRating);
+  assert.ok(
+    savedVehicleRating > 4.6 && savedVehicleRating < 4.7,
+    "Rating should be average (approx 4.66), not percentage"
+  );
 
   // Test 8: Get Vehicles By Status
   console.log("\n--- Test: Get Vehicles By Status ---");

@@ -49,8 +49,8 @@ const createInspectionController = async (req, res) => {
 
     // Avoid division by zero if empty components
     let ratingPercentage = 0;
-    if (totalPossibleScore > 0) {
-      ratingPercentage = (totalScore / totalPossibleScore) * 100;
+    if (componentKeys.length > 0) {
+      ratingPercentage = totalScore / componentKeys.length;
     }
 
     // 3. Vehicle Logic (Find or Create)
@@ -184,7 +184,7 @@ const verifyInspectionController = async (req, res) => {
       if (count === 0) return 0;
 
       componentList.forEach((c) => (total += c.rating || 0));
-      return (total / (count * 5)) * 100;
+      return total / count;
     };
 
     // DB Data
