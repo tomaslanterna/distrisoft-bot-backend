@@ -29,7 +29,7 @@ const VehicleStateSchema = new Schema(
 const VehicleComponentSchema = new Schema(
   {
     name: { type: String, required: true },
-    state: { type: Boolean, required: true },
+    state: { type: Number, required: true, enum: [0, 1, 2], default: 0 },
   },
   { _id: false }
 );

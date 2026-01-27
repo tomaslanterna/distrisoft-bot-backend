@@ -91,10 +91,13 @@ const createInspectionController = async (req, res) => {
     const checklistKeys = Object.keys(
       inspectionData.componentesIncluidos || {}
     );
-    const vehicleComponents = checklistKeys.map((key) => ({
-      name: key,
-      state: inspectionData.componentesIncluidos[key],
-    }));
+    const vehicleComponents = checklistKeys.map((key) => {
+      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+      return {
+        name: key,
+        state: isNaN(val) ? 0 : val,
+      };
+    });
 
     // Map photos to Schema format { url, alt }
     // Assuming inspectionData.fotos is array of strings or objects?
@@ -201,10 +204,13 @@ const verifyInspectionController = async (req, res) => {
     const checklistKeys = Object.keys(
       inspectionData.componentesIncluidos || {}
     );
-    const newVehicleComponents = checklistKeys.map((key) => ({
-      name: key,
-      state: inspectionData.componentesIncluidos[key],
-    }));
+    const newVehicleComponents = checklistKeys.map((key) => {
+      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+      return {
+        name: key,
+        state: isNaN(val) ? 0 : val,
+      };
+    });
 
     const newRating = calculateRating(newVehicleState);
     const newMileage = parseInt(inspectionData.kilometros || 0, 10);
@@ -356,10 +362,13 @@ const confirmInspectionController = async (req, res) => {
       rating: parseInt(inspectionData.componentes[key] || 0, 10),
     }));
 
-    const vehicleComponents = checklistKeys.map((key) => ({
-      name: key,
-      state: inspectionData.componentesIncluidos[key],
-    }));
+    const vehicleComponents = checklistKeys.map((key) => {
+      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+      return {
+        name: key,
+        state: isNaN(val) ? 0 : val,
+      };
+    });
 
     // Calculate Rating
     let totalScore = 0;
@@ -562,10 +571,13 @@ const updateInspectionStatusController = async (req, res) => {
       const checklistKeys = Object.keys(
         inspectionData.componentesIncluidos || {}
       );
-      const vehicleComponents = checklistKeys.map((key) => ({
-        name: key,
-        state: inspectionData.componentesIncluidos[key],
-      }));
+      const vehicleComponents = checklistKeys.map((key) => {
+        const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+        return {
+          name: key,
+          state: isNaN(val) ? 0 : val,
+        };
+      });
 
       let reinspectionType = "SUCCESSFULLY_REINSPECTION"; // Default valid
 

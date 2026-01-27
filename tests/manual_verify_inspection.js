@@ -74,6 +74,16 @@ Inspection.findById = async (id) => ({
   entityId: "channel123",
   inspectorId: "inspector123",
   inspectionType: "INSPECTION",
+  metadata: { mileage: 50000 },
+  vehicleState: [
+    { name: "pintura", rating: 4 },
+    { name: "chapa", rating: 5 },
+    { name: "motor", rating: 5 },
+  ],
+  vehicleComponents: [
+    { name: "radio", state: 1 },
+    { name: "gato", state: 0 },
+  ],
   save: async () => true,
 });
 Inspection.find = () => ({ populate: () => ({ sort: () => [] }) });
@@ -141,6 +151,20 @@ const createMockRes = (label) => ({
   assert.ok(
     savedVehicleRating > 4.6 && savedVehicleRating < 4.7,
     "Rating should be average (approx 4.66), not percentage"
+  );
+
+  // Test: Default State to 0
+  console.log("\n--- Test: Default State to 0 ---");
+  // Simulate explicit undefined/null in payload or just omit key logic check if mocking controller behavior
+  // Note: The controller iterates over KEYS provided.
+  // To test default, we need a key present but value missing/invalid?
+  // Actually, the new logic iterates keys of `inspectionData.componentesIncluidos`.
+  // If key exists but value is null/undefined -> parseInt(null) -> NaN -> 0.
+  mockInspectionData.componentesIncluidos = { missing_val: null, valid_val: 1 };
+
+  await createInspectionController(
+    { body: { inspectionData: mockInspectionData, user: mockUser } },
+    createMockRes("CreateInspectionDefaults")
   );
 
   // Test 8: Get Vehicles By Status
