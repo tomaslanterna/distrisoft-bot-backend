@@ -4,7 +4,8 @@ const { Reinspection } = require("../models/Reinspection");
 
 const createInspectionController = async (req, res) => {
   try {
-    const { inspectionData, user } = req.body;
+    const { inspectionData } = req.body;
+    const user = req.user;
 
     // 1. Data Validation (Basic)
     if (
@@ -20,7 +21,7 @@ const createInspectionController = async (req, res) => {
     }
 
     // Context from User
-    const businessId = user.distributor; // Assuming User.distributor is the Business ID
+    const businessId = user.distributorId; // Assuming User.distributor is the Business ID
     const entityId = user.distributorChannelId; // Assuming this maps to entityId
     const inspectorId = user.id;
 
@@ -82,14 +83,14 @@ const createInspectionController = async (req, res) => {
 
     if (!savedVehicle) {
       throw new Error(
-        "Error crítico: No se pudo crear o actualizar el vehículo. Verifique los datos."
+        "Error crítico: No se pudo crear o actualizar el vehículo. Verifique los datos.",
       );
     }
 
     // 4. Create Inspection
     // Map componentsIncluded to Schema format
     const checklistKeys = Object.keys(
-      inspectionData.componentesIncluidos || {}
+      inspectionData.componentesIncluidos || {},
     );
     const vehicleComponents = checklistKeys.map((key) => {
       const val = parseInt(inspectionData.componentesIncluidos[key], 10);
@@ -202,7 +203,7 @@ const verifyInspectionController = async (req, res) => {
     }));
 
     const checklistKeys = Object.keys(
-      inspectionData.componentesIncluidos || {}
+      inspectionData.componentesIncluidos || {},
     );
     const newVehicleComponents = checklistKeys.map((key) => {
       const val = parseInt(inspectionData.componentesIncluidos[key], 10);
@@ -354,7 +355,7 @@ const confirmInspectionController = async (req, res) => {
     // 1. Prepare Data
     const componentKeys = Object.keys(inspectionData.componentes || {});
     const checklistKeys = Object.keys(
-      inspectionData.componentesIncluidos || {}
+      inspectionData.componentesIncluidos || {},
     );
 
     const vehicleState = componentKeys.map((key) => ({
@@ -423,7 +424,7 @@ const confirmInspectionController = async (req, res) => {
 const getInspectionsByTypeController = async (req, res) => {
   try {
     const { type } = req.params;
-    const user = { ...req.user, distributor: "6963fee4005e60c8a24edf6d" };
+    const user = req.user;
 
     if (!type) {
       return res.status(400).json({
@@ -432,7 +433,7 @@ const getInspectionsByTypeController = async (req, res) => {
       });
     }
 
-    const businessId = user.distributor;
+    const businessId = user.distributorId;
 
     if (!businessId) {
       return res.status(400).json({
@@ -467,7 +468,7 @@ const getInspectionsByTypeController = async (req, res) => {
 const getInspectionByPlateController = async (req, res) => {
   try {
     const { plate } = req.params;
-    const user = { ...req.user, distributor: "6963fee4005e60c8a24edf6d" };
+    const user = req.user;
 
     if (!plate) {
       return res.status(400).json({
@@ -476,7 +477,7 @@ const getInspectionByPlateController = async (req, res) => {
       });
     }
 
-    const businessId = user.distributor;
+    const businessId = user.distributorId;
 
     // 1. Find Vehicle
     const vehicle = await Vehicle.findOne({
@@ -569,7 +570,7 @@ const updateInspectionStatusController = async (req, res) => {
       }));
 
       const checklistKeys = Object.keys(
-        inspectionData.componentesIncluidos || {}
+        inspectionData.componentesIncluidos || {},
       );
       const vehicleComponents = checklistKeys.map((key) => {
         const val = parseInt(inspectionData.componentesIncluidos[key], 10);

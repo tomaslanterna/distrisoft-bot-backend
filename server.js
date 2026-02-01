@@ -27,6 +27,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Routes
+const authMiddleware = require("./middlewares/auth.middleware");
+
+// Routes
 app.use("/message", messageRoutes);
 app.use("/order", orderRoutes);
 // app.use("/client", clientRoutes);
@@ -34,8 +37,8 @@ app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
 app.use("/auth", authRoutes);
 app.use("/booking", bookingRoutes);
-app.use("/inspection", inspectionRoutes);
-app.use("/vehicle", vehicleRoutes);
+app.use("/inspection", authMiddleware, inspectionRoutes);
+app.use("/vehicle", authMiddleware, vehicleRoutes);
 
 // Health check endpoint
 app.get("/health", (req, res) => {

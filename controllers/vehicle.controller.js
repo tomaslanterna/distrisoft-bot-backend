@@ -56,7 +56,7 @@ const updateVehicleStatusController = async (req, res) => {
 const getVehiclesByStatusController = async (req, res) => {
   try {
     const { status } = req.params;
-    const user = { ...req.user, distributor: "6963fee4005e60c8a24edf6d" };
+    const user = req.user;
 
     // Validate Input Status
     if (!status) {
@@ -82,19 +82,19 @@ const getVehiclesByStatusController = async (req, res) => {
 
     // Validate if any requested status is invalid
     const invalidStatuses = requestedStatuses.filter(
-      (s) => !allowedStatuses.includes(s)
+      (s) => !allowedStatuses.includes(s),
     );
     if (invalidStatuses.length > 0) {
       return res.status(400).json({
         success: false,
         message: `Estados inválidos encontrados: ${invalidStatuses.join(
-          ", "
+          ", ",
         )}. Permitidos: ${allowedStatuses.join(", ")}`,
       });
     }
 
     // Determine Business Context
-    const businessId = user.distributor;
+    const businessId = user.distributorId;
 
     // Aggregation Pipeline
     const pipeline = [
