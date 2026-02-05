@@ -10,6 +10,7 @@ const updateVehicleStatusController = async (req, res) => {
       "PENDING_REVIEW",
       "REJECTED_REVIEW",
       "SUCCESSFULLY_REVIEW",
+      "SUCCESSFULLY_SELLED",
     ];
 
     if (!id || !status) {
@@ -72,6 +73,7 @@ const getVehiclesByStatusController = async (req, res) => {
       "PENDING_REVIEW",
       "REJECTED_REVIEW",
       "SUCCESSFULLY_REVIEW",
+      "SUCCESSFULLY_SELLED",
     ];
 
     if (requestedStatuses.length > 3) {
@@ -169,6 +171,7 @@ const getVehiclesByFilterController = async (req, res) => {
         "PENDING_REVIEW",
         "REJECTED_REVIEW",
         "SUCCESSFULLY_REVIEW",
+        "SUCCESSFULLY_SELLED",
       ];
       const invalidStatuses = requestedStatuses.filter(
         (s) => !allowedStatuses.includes(s),
