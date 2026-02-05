@@ -9,7 +9,7 @@ const PhotoSchema = new Schema(
     url: { type: String, required: true },
     alt: { type: String, required: true }, // Descripción de la imagen (ej: "Frente del vehículo", "Detalle motor")
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -20,7 +20,7 @@ const VehicleStateSchema = new Schema(
     name: { type: String, required: true },
     rating: { type: Number, required: true, min: 0, max: 5 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -31,7 +31,7 @@ const VehicleComponentSchema = new Schema(
     name: { type: String, required: true },
     state: { type: Number, required: true, enum: [0, 1, 2], default: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -65,12 +65,14 @@ const InspectionSchema = new Schema(
       externalTemp: String,
       notes: String,
     },
+    checklistRating: { type: Number, default: 0 },
+    overallRating: { type: Number, default: 0 },
     vehicleState: [VehicleStateSchema],
     vehicleComponents: [VehicleComponentSchema],
     photos: [PhotoSchema], // Ahora usa el esquema con URL y Alt
     createdAt: { type: Date, default: Date.now },
   },
-  { timestamps: { updatedAt: false } }
+  { timestamps: { updatedAt: false } },
 ); // Las inspecciones suelen ser inmutables
 
 // Índice para búsqueda rápida por vehículo (orden descendente para ver la última primero)

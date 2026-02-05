@@ -45,11 +45,11 @@ const VehicleSchema = new Schema(
     plate: {
       type: String,
       required: true,
-      unique: true,
+      unique: false,
       uppercase: true,
       trim: true,
     },
-    vin: { type: String, required: true, unique: true, uppercase: true },
+    vin: { type: String, required: false, unique: false, uppercase: true },
     brand: { type: String, required: true },
     model: { type: String, required: true },
     year: { type: Number, required: true },

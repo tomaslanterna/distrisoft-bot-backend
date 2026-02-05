@@ -2,6 +2,49 @@ const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
 const { Reinspection } = require("../models/Reinspection");
 
+const calculateInspectionRatings = (
+  componentList,
+  checklistList,
+  feChecklistRating = null,
+) => {
+  // 1. Calculate Star Rating (Average of 1-5 stars)
+  let totalStars = 0;
+  const starCount = componentList.length;
+  let starRating = 0;
+
+  if (starCount > 0) {
+    componentList.forEach((c) => (totalStars += c.rating || 0));
+    starRating = totalStars / starCount;
+  }
+
+  // 2. Calculate Checklist Rating
+  // Formula: (Count of items with state 1 / Total items selected) * 5
+  // state 1 = OK, state 2 = Issues (Bad)
+  let checklistRating = 0;
+  const checklistCount = checklistList.length;
+
+  if (checklistCount > 0) {
+    const okCount = checklistList.filter((c) => c.state === 1).length;
+    const checklistCalculatedRating = (okCount / checklistCount) * 5;
+    checklistRating = feChecklistRating
+      ? (checklistCalculatedRating + feChecklistRating) / 2
+      : checklistCalculatedRating;
+  }
+
+  // 3. Calculate Overall Rating
+  // Average of Star Rating and Checklist Rating
+  let overallRating = 0;
+  if (starCount > 0 && checklistCount > 0) {
+    overallRating = (starRating + checklistRating) / 2;
+  } else if (starCount > 0) {
+    overallRating = starRating;
+  } else if (checklistCount > 0) {
+    overallRating = checklistRating;
+  }
+
+  return { starRating, checklistRating, overallRating };
+};
+
 const createInspectionController = async (req, res) => {
   try {
     const { inspectionData } = req.body;
@@ -33,28 +76,39 @@ const createInspectionController = async (req, res) => {
       });
     }
 
-    // 2. Rating Calculation
-    const componentKeys = Object.keys(inspectionData.componentes || {});
-    let totalScore = 0;
-    const maxScorePerItem = 5;
-    const totalPossibleScore = componentKeys.length * maxScorePerItem;
+    // 3. Vehicle Logic (Find or Create)
+    // Create new inspection objects first to calculate rating
+    // then use that rating for vehicle creation/update
 
+    // Map components (Stars)
+    const componentKeys = Object.keys(inspectionData.componentes || {});
     const vehicleState = componentKeys.map((key) => {
       const rating = parseInt(inspectionData.componentes[key] || 0, 10);
-      totalScore += rating;
       return {
         name: key,
         rating: rating,
       };
     });
 
-    // Avoid division by zero if empty components
-    let ratingPercentage = 0;
-    if (componentKeys.length > 0) {
-      ratingPercentage = totalScore / componentKeys.length;
-    }
+    // Map componentsIncluded to Schema format
+    const checklistKeys = Object.keys(
+      inspectionData.componentesIncluidos || {},
+    );
+    const vehicleComponents = checklistKeys.map((key) => {
+      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+      return {
+        name: key,
+        state: isNaN(val) ? 0 : val,
+      };
+    });
 
-    // 3. Vehicle Logic (Find or Create)
+    const { starRating, checklistRating, overallRating } =
+      calculateInspectionRatings(
+        vehicleState,
+        vehicleComponents,
+        inspectionData.ratingComponentes,
+      );
+
     let vehicle = await Vehicle.findOne({
       plate: inspectionData.matricula,
       businessId: businessId,
@@ -70,11 +124,11 @@ const createInspectionController = async (req, res) => {
         model: inspectionData.modelo,
         year: parseInt(inspectionData.ano, 10),
         status: "PENDING_REVIEW", // Initial status after inspection?
-        rating: ratingPercentage, // Current rating derived from inspection
+        rating: overallRating, // Use overall rating
       });
     } else {
       // Update existing vehicle stats
-      vehicle.rating = ratingPercentage;
+      vehicle.rating = overallRating;
       vehicle.status = "SUCCESSFULLY_REVIEW";
       // Optional: Update other fields if changed? Let's stick to core updates.
     }
@@ -88,18 +142,6 @@ const createInspectionController = async (req, res) => {
     }
 
     // 4. Create Inspection
-    // Map componentsIncluded to Schema format
-    const checklistKeys = Object.keys(
-      inspectionData.componentesIncluidos || {},
-    );
-    const vehicleComponents = checklistKeys.map((key) => {
-      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
-      return {
-        name: key,
-        state: isNaN(val) ? 0 : val,
-      };
-    });
-
     // Map photos to Schema format { url, alt }
     // Assuming inspectionData.fotos is array of strings or objects?
     // Prompt says `fotos: []`. Let's assume strings for now or handle both.
@@ -122,6 +164,8 @@ const createInspectionController = async (req, res) => {
         notes: inspectionData.observaciones,
         // location and externalTemp not in provided payload, skipping
       },
+      checklistRating: checklistRating,
+      overallRating: overallRating,
       vehicleState: vehicleState,
       vehicleComponents: vehicleComponents,
       photos: photos,
@@ -181,18 +225,15 @@ const verifyInspectionController = async (req, res) => {
     }
 
     // 2. Normalize & Calculate
-    // Helper to calc rating
-    const calculateRating = (componentList) => {
-      let total = 0;
-      const count = componentList.length;
-      if (count === 0) return 0;
+    // 2. Normalize & Calculate
 
-      componentList.forEach((c) => (total += c.rating || 0));
-      return total / count;
-    };
-
-    // DB Data
-    const dbRating = calculateRating(dbInspection.vehicleState);
+    // Re-calculate DB Rating to ensure consistency with new logic
+    // Even if DB has old rating, we recalculate for comparison
+    const { overallRating: dbRating } = calculateInspectionRatings(
+      dbInspection.vehicleState,
+      dbInspection.vehicleComponents,
+      dbInspection.checklistRating,
+    );
     const dbMileage = dbInspection.metadata?.mileage || 0;
 
     // New Data
@@ -213,7 +254,11 @@ const verifyInspectionController = async (req, res) => {
       };
     });
 
-    const newRating = calculateRating(newVehicleState);
+    const { overallRating: newRating } = calculateInspectionRatings(
+      newVehicleState,
+      newVehicleComponents,
+      inspectionData.ratingComponentes,
+    );
     const newMileage = parseInt(inspectionData.kilometros || 0, 10);
 
     // 3. Compare & Find Differences
@@ -371,11 +416,13 @@ const confirmInspectionController = async (req, res) => {
       };
     });
 
-    // Calculate Rating
-    let totalScore = 0;
-    vehicleState.forEach((c) => (totalScore += c.rating));
-    const maxScore = vehicleState.length * 5;
-    let ratingPercentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+    const { starRating, checklistRating, overallRating } =
+      calculateInspectionRatings(
+        vehicleState,
+        vehicleComponents,
+        inspectionData.ratingComponentes,
+      );
+    const ratingPercentage = overallRating; // Use overall rating as the vehicle score
 
     const photos = (inspectionData.fotos || []).map((foto, index) => {
       if (typeof foto === "string")
@@ -390,6 +437,8 @@ const confirmInspectionController = async (req, res) => {
     inspection.metadata.notes = inspectionData.observaciones;
     inspection.photos = photos;
     inspection.inspectionType = "SUCCESSFULLY_INSPECTION";
+    inspection.checklistRating = checklistRating;
+    inspection.overallRating = overallRating;
 
     await inspection.save();
 
@@ -603,6 +652,12 @@ const updateInspectionStatusController = async (req, res) => {
         if (status === "RE_INSPECTION") reinspectionType = "RE_INSPECTION";
       }
 
+      const { checklistRating, overallRating } = calculateInspectionRatings(
+        vehicleState,
+        vehicleComponents,
+        inspectionData.ratingComponentes,
+      );
+
       await Reinspection.create({
         inspectionId: inspection._id,
         businessId: inspection.businessId,
@@ -614,9 +669,20 @@ const updateInspectionStatusController = async (req, res) => {
           mileage: parseInt(inspectionData.kilometros || 0, 10),
           notes: inspectionData.observaciones,
         },
+        checklistRating: checklistRating,
+        overallRating: overallRating,
         vehicleState: vehicleState,
         vehicleComponents: vehicleComponents,
       });
+
+      // Update vehicle rating as well?
+      // Usually reinspection updates vehicle state
+      // Let's update vehicle rating to match reinspection
+      const vehicle = await Vehicle.findById(inspection.vehicleId);
+      if (vehicle) {
+        vehicle.rating = overallRating;
+        await vehicle.save();
+      }
     }
 
     return res.status(200).json({
