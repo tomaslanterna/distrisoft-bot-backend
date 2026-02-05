@@ -1,4 +1,5 @@
 const { Vehicle } = require("../models/Vehicle");
+const mongoose = require("mongoose");
 
 const updateVehicleStatusController = async (req, res) => {
   try {
@@ -148,7 +149,97 @@ const getVehiclesByStatusController = async (req, res) => {
   }
 };
 
+const getVehiclesByFilterController = async (req, res) => {
+  try {
+    const { startDate, endDate, status } = req.query;
+    const user = req.user;
+
+    const query = {};
+
+    // 1. Business Context
+    const businessId = user.distributorId;
+    if (businessId) {
+      query.businessId = new mongoose.Types.ObjectId(businessId);
+    }
+
+    // 2. Status Filter
+    if (status) {
+      const requestedStatuses = status.split(",").map((s) => s.trim());
+      const allowedStatuses = [
+        "PENDING_REVIEW",
+        "REJECTED_REVIEW",
+        "SUCCESSFULLY_REVIEW",
+      ];
+      const invalidStatuses = requestedStatuses.filter(
+        (s) => !allowedStatuses.includes(s),
+      );
+
+      if (invalidStatuses.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Estados inválidos: ${invalidStatuses.join(", ")}`,
+        });
+      }
+      query.status = { $in: requestedStatuses };
+    }
+
+    // 3. Date Filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Ajustar endDate para que incluya todo el día si es solo fecha YYYY-MM-DD
+        // Si ya viene con hora, se respeta.
+        // Asumimos que si el usuario manda "2023-10-10", quiere decir hasta el final de ese día o inicio?
+        // Standard: $lte matches exactly.
+        const end = new Date(endDate);
+        // If exact time provided, use it. If simply date, maybe logic needed?
+        // Let's stick to simple provided date object for now.
+        query.createdAt.$lte = end;
+      }
+    }
+
+    // Aggregation Pipeline
+    const pipeline = [
+      { $match: query },
+      {
+        $lookup: {
+          from: "inspections",
+          localField: "_id",
+          foreignField: "vehicleId",
+          as: "inspections",
+        },
+      },
+      {
+        $lookup: {
+          from: "reinspections",
+          localField: "_id",
+          foreignField: "vehicleId",
+          as: "reinspections",
+        },
+      },
+      { $sort: { createdAt: -1 } },
+    ];
+
+    const vehicles = await Vehicle.aggregate(pipeline);
+
+    return res.status(200).json({
+      success: true,
+      data: vehicles,
+    });
+  } catch (error) {
+    console.error("Error en getVehiclesByFilterController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al filtrar vehículos.",
+    });
+  }
+};
+
 module.exports = {
   updateVehicleStatusController,
   getVehiclesByStatusController,
+  getVehiclesByFilterController,
 };

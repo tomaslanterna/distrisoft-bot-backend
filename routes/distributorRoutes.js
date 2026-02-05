@@ -9,14 +9,20 @@ const {
   createDistributorCollection,
   deleteDistributorCollection,
   uploadDistributorImages,
+  getDistributorUsersStats,
+  createDistributorUser,
 } = require("../controllers/distributorController");
 const { uploadMiddleware } = require("../middlewares/uploadMiddlewares");
 
 const router = express.Router();
 
+const authMiddleware = require("../middlewares/auth.middleware");
+
 router.get("/orders", getDistributorOrders);
 router.get("/products", getDistributorProducts);
 router.get("/collections", getDistributorCollections);
+router.get("/users-stats", authMiddleware, getDistributorUsersStats);
+router.post("/users/create", authMiddleware, createDistributorUser);
 
 router.post("/update", updateDistributor);
 router.post("/products/create", createDistributorProduct);

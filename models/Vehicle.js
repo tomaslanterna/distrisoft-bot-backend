@@ -9,7 +9,7 @@ const PhotoSchema = new Schema(
     url: { type: String, required: true },
     alt: { type: String, required: true }, // Descripción de la imagen (ej: "Frente del vehículo", "Detalle motor")
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -20,7 +20,7 @@ const VehicleStateSchema = new Schema(
     name: { type: String, required: true },
     rating: { type: Number, required: true, min: 0, max: 5 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -31,7 +31,7 @@ const VehicleComponentSchema = new Schema(
     name: { type: String, required: true },
     state: { type: Number, required: true, enum: [0, 1, 2], default: 0 },
   },
-  { _id: false }
+  { _id: false },
 );
 
 /**
@@ -55,7 +55,13 @@ const VehicleSchema = new Schema(
     year: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["PENDING_REVIEW", "REJECTED_REVIEW", "SUCCESSFULLY_REVIEW"],
+      enum: [
+        "PENDING_REVIEW",
+        "REJECTED_REVIEW",
+        "SUCCESSFULLY_REVIEW",
+        "IN_SERVICE",
+        "SUCCESSFULLY_SELLED",
+      ],
       default: "PENDING_REVIEW",
     },
     rating: { type: Number, default: 0 },
@@ -65,7 +71,7 @@ const VehicleSchema = new Schema(
       updatedAt: { type: Date, default: Date.now },
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Índice compuesto para multitenancy eficiente

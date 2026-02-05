@@ -633,6 +633,78 @@ const updateInspectionStatusController = async (req, res) => {
   }
 };
 
+const getInspectionsByFilterController = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const user = req.user;
+
+    const query = {
+      businessId: user.distributorId,
+    };
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    const inspections = await Inspection.find(query)
+      .populate("vehicleId", "plate brand model year")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: inspections,
+    });
+  } catch (error) {
+    console.error("Error en getInspectionsByFilterController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al filtrar inspecciones.",
+    });
+  }
+};
+
+const getReinspectionsByFilterController = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const user = req.user;
+
+    const query = {
+      businessId: user.distributorId,
+    };
+
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    const reinspections = await Reinspection.find(query)
+      .populate("vehicleId", "plate brand model year")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      data: reinspections,
+    });
+  } catch (error) {
+    console.error("Error en getReinspectionsByFilterController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al filtrar reinspecciones.",
+    });
+  }
+};
+
 module.exports = {
   createInspectionController,
   verifyInspectionController,
@@ -640,4 +712,6 @@ module.exports = {
   getInspectionsByTypeController,
   getInspectionByPlateController,
   updateInspectionStatusController,
+  getInspectionsByFilterController,
+  getReinspectionsByFilterController,
 };

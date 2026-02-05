@@ -21,6 +21,7 @@ const registerUser = async ({
   password,
   role,
   distributorChannelId,
+  distributor,
 }) => {
   // Verificar si el usuario ya existe
   const existingUser = await User.findOne({ $or: [{ username }] });
@@ -34,6 +35,7 @@ const registerUser = async ({
     password,
     role,
     distributorChannelId,
+    distributor,
   });
 
   await user.save();

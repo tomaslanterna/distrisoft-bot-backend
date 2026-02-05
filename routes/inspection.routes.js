@@ -6,6 +6,8 @@ const {
   getInspectionsByTypeController,
   getInspectionByPlateController,
   updateInspectionStatusController,
+  getInspectionsByFilterController,
+  getReinspectionsByFilterController,
 } = require("../controllers/inspection.controller");
 
 const router = express.Router();
@@ -17,5 +19,8 @@ router.get("/type/:type", getInspectionsByTypeController);
 router.get("/plate/:plate", getInspectionByPlateController);
 // User requested separate endpoints status update
 router.post("/status/:id", updateInspectionStatusController);
+
+router.get("/filter", getInspectionsByFilterController);
+router.get("/reinspections/filter", getReinspectionsByFilterController);
 
 module.exports = router;

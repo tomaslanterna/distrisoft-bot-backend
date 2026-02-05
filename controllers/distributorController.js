@@ -22,7 +22,65 @@ const {
   updateWhapiCollection,
   deleteWhapiCollection,
 } = require("../services/whatsappApiService");
+const { registerUser } = require("../services/auth.service");
 const fs = require("fs");
+const User = require("../models/User");
+const { Inspection } = require("../models/Inspection");
+const { Reinspection } = require("../models/Reinspection");
+
+const getDistributorUsersStats = async (req, res) => {
+  try {
+    const { distributorId } = req.user;
+
+    if (!distributorId) {
+      return res
+        .status(403)
+        .json({ message: "Distributor ID not found in token" });
+    }
+
+    const users = await User.find({ distributor: distributorId });
+
+    const usersStats = await Promise.all(
+      users.map(async (user) => {
+        const inspectionsCount = await Inspection.countDocuments({
+          inspectorId: user._id,
+        });
+
+        const reinspectionsCount = await Reinspection.countDocuments({
+          inspectorId: user._id,
+        });
+
+        // "Autos ingresaron" approximation: Unique vehicles inspected by this user
+        // Using aggregation to count distinct vehicleIds for this inspector
+        const uniqueVehicles = await Inspection.distinct("vehicleId", {
+          inspectorId: user._id,
+        });
+
+        return {
+          id: user._id,
+          username: user.username,
+          role: user.role,
+          stats: {
+            inspectionsCreated: inspectionsCount,
+            reinspectionsPerformed: reinspectionsCount,
+            vehiclesEntered: uniqueVehicles.length,
+          },
+        };
+      }),
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: usersStats,
+    });
+  } catch (error) {
+    console.error("Error in getDistributorUsersStats:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error fetching user stats",
+    });
+  }
+};
 
 const updateDistributor = async (req, res) => {
   try {
@@ -34,7 +92,7 @@ const updateDistributor = async (req, res) => {
 
     const validClients = distributor.clients.filter(
       (client) =>
-        client.phone != null && client.address != "" && client.ubication != ""
+        client.phone != null && client.address != "" && client.ubication != "",
     );
 
     distributor.clients = validClients.map((client) => ({
@@ -190,7 +248,7 @@ const decorateCollections = async (collections) => {
             console.error(`Error al obtener producto ${productId}:`, err);
             return null; // o podrías filtrar los nulls más adelante
           }
-        })
+        }),
       );
 
       return {
@@ -199,7 +257,7 @@ const decorateCollections = async (collections) => {
         products,
         status: "",
       };
-    })
+    }),
   );
 
   return {
@@ -229,7 +287,7 @@ const getDistributorCollections = async (req, res) => {
     } else {
       distributorCollectionsBase = await getCollectionsDb(distributor._id);
       distributorCollections = await decorateCollections(
-        distributorCollectionsBase
+        distributorCollectionsBase,
       );
     }
 
@@ -270,13 +328,13 @@ const updateDistributorCollection = async (req, res) => {
       updatedCollection = await updateWhapiCollection(
         collection,
         distributor,
-        productsId
+        productsId,
       );
     } else {
       updatedCollection = await updateCollectionDb(
         collection,
         distributor._id,
-        productsId
+        productsId,
       );
     }
 
@@ -321,7 +379,7 @@ const createDistributorCollection = async (req, res) => {
       createdCollection = await createWhapiCollection(
         collectionName,
         distributor,
-        productsId
+        productsId,
       );
     } else {
       createdCollection = await createCollectionDb({
@@ -367,12 +425,12 @@ const deleteDistributorCollection = async (req, res) => {
     if (distributor.type === "distributor") {
       deletedCollection = await deleteWhapiCollection(
         collectionId,
-        distributor
+        distributor,
       );
     } else {
       deletedCollection = await deleteCollectionDb(
         collectionName,
-        distributor._id
+        distributor._id,
       );
     }
 
@@ -403,7 +461,7 @@ const uploadDistributorImages = async (req, res) => {
     const uploadPromises = files.map((file) =>
       cloudinary.uploader.upload(file.path, {
         folder: "servizio", // opcional: nombre de carpeta en Cloudinary
-      })
+      }),
     );
 
     const results = await Promise.all(uploadPromises);
@@ -422,6 +480,57 @@ const uploadDistributorImages = async (req, res) => {
   }
 };
 
+const createDistributorUser = async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    const {
+      role: requesterRole,
+      distributorId,
+      distributorChannelId,
+    } = req.user;
+
+    // Check if requester is admin
+    if (requesterRole !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Acceso denegado. Solo los administradores pueden crear usuarios.",
+      });
+    }
+
+    if (!username || !password || !role) {
+      return res.status(400).json({
+        success: false,
+        message: "Faltan campos obligatorios: username, password, role.",
+      });
+    }
+
+    const newUser = await registerUser({
+      username,
+      password,
+      role,
+      distributorChannelId,
+      distributor: distributorId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Usuario creado exitosamente.",
+      data: {
+        id: newUser._id,
+        username: newUser.username,
+        role: newUser.role,
+      },
+    });
+  } catch (error) {
+    console.error("Error in createDistributorUser:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error interno al crear usuario.",
+    });
+  }
+};
+
 module.exports = {
   updateDistributor,
   getDistributorOrders,
@@ -432,4 +541,6 @@ module.exports = {
   createDistributorCollection,
   deleteDistributorCollection,
   uploadDistributorImages,
+  getDistributorUsersStats,
+  createDistributorUser,
 };
