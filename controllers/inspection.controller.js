@@ -771,6 +771,54 @@ const getReinspectionsByFilterController = async (req, res) => {
   }
 };
 
+const updateReinspectionStateController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { vehicleState, vehicleComponents } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID de reinspección es requerido.",
+      });
+    }
+
+    if (!vehicleState || !vehicleComponents) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Se requiere vehicleState y vehicleComponents para actualizar.",
+      });
+    }
+
+    const reinspection = await Reinspection.findById(id);
+
+    if (!reinspection) {
+      return res.status(404).json({
+        success: false,
+        message: "Reinspección no encontrada.",
+      });
+    }
+
+    reinspection.vehicleState = vehicleState;
+    reinspection.vehicleComponents = vehicleComponents;
+
+    await reinspection.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Reinspección actualizada correctamente.",
+      data: reinspection,
+    });
+  } catch (error) {
+    console.error("Error en updateReinspectionStateController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al actualizar la reinspección.",
+    });
+  }
+};
+
 module.exports = {
   createInspectionController,
   verifyInspectionController,
@@ -780,4 +828,5 @@ module.exports = {
   updateInspectionStatusController,
   getInspectionsByFilterController,
   getReinspectionsByFilterController,
+  updateReinspectionStateController,
 };
