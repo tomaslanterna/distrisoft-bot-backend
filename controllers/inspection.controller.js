@@ -774,7 +774,8 @@ const getReinspectionsByFilterController = async (req, res) => {
 const updateReinspectionStateController = async (req, res) => {
   try {
     const { id } = req.params;
-    const { vehicleState, vehicleComponents } = req.body;
+    const { vehicleState, vehicleComponents, vehicleBills, vehicleId } =
+      req.body;
 
     if (!id) {
       return res.status(400).json({
@@ -804,6 +805,17 @@ const updateReinspectionStateController = async (req, res) => {
     reinspection.vehicleComponents = vehicleComponents;
 
     await reinspection.save();
+
+    if (vehicleBills && Array.isArray(vehicleBills) && vehicleId) {
+      const vehicle = await Vehicle.findById(vehicleId);
+      if (vehicle) {
+        if (!vehicle.vehicleBills) {
+          vehicle.vehicleBills = [];
+        }
+        vehicle.vehicleBills.push(...vehicleBills);
+        await vehicle.save();
+      }
+    }
 
     return res.status(200).json({
       success: true,

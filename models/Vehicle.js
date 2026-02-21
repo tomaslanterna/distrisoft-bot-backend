@@ -72,6 +72,13 @@ const VehicleSchema = new Schema(
     },
     rating: { type: Number, default: 0 },
     currentInspectionId: { type: Schema.Types.ObjectId, ref: "Inspection" },
+    vehicleBills: [
+      {
+        supplier: { type: String },
+        part: { type: String },
+        cost: { type: Number },
+      },
+    ],
     metadata: {
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },
