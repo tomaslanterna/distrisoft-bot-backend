@@ -7,7 +7,7 @@ const isTechnician = (req, res, next) => {
       });
     }
 
-    if (req.user.role !== "technician") {
+    if (req.user.role !== "technician" && req.user.role !== "admin") {
       return res.status(404).json({
         success: false,
         message: "Ruta no encontrada",

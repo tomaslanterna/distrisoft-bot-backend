@@ -801,18 +801,44 @@ const updateReinspectionStateController = async (req, res) => {
       });
     }
 
-    reinspection.vehicleState = vehicleState;
-    reinspection.vehicleComponents = vehicleComponents;
+    if (vehicleState) {
+      vehicleState.forEach((newStateItem) => {
+        const existingItemIndex = reinspection.vehicleState.findIndex(
+          (item) => item.name === newStateItem.name,
+        );
+        if (existingItemIndex > -1) {
+          reinspection.vehicleState[existingItemIndex].rating =
+            newStateItem.rating;
+        } else {
+          reinspection.vehicleState.push(newStateItem);
+        }
+      });
+    }
+
+    if (vehicleComponents) {
+      vehicleComponents.forEach((newCompItem) => {
+        const existingItemIndex = reinspection.vehicleComponents.findIndex(
+          (item) => item.name === newCompItem.name,
+        );
+        if (existingItemIndex > -1) {
+          reinspection.vehicleComponents[existingItemIndex].state =
+            newCompItem.state;
+        } else {
+          reinspection.vehicleComponents.push(newCompItem);
+        }
+      });
+    }
 
     await reinspection.save();
 
     if (vehicleBills && Array.isArray(vehicleBills) && vehicleId) {
       const vehicle = await Vehicle.findById(vehicleId);
       if (vehicle) {
-        if (!vehicle.vehicleBills) {
+        if (!vehicle?.vehicleBills) {
           vehicle.vehicleBills = [];
+        } else {
+          vehicle.vehicleBills.push(...vehicleBills);
         }
-        vehicle.vehicleBills.push(...vehicleBills);
         await vehicle.save();
       }
     }
