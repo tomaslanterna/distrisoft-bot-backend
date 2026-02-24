@@ -19,6 +19,7 @@ const VehicleStateSchema = new Schema(
   {
     name: { type: String, required: true },
     rating: { type: Number, required: true, min: 0, max: 5 },
+    isNewValue: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -30,6 +31,7 @@ const VehicleComponentSchema = new Schema(
   {
     name: { type: String, required: true },
     state: { type: Number, required: true, enum: [0, 1, 2], default: 0 },
+    isNewValue: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -73,6 +75,14 @@ const ReInspectionSchema = new Schema(
     overallRating: { type: Number, default: 0 },
     vehicleState: [VehicleStateSchema],
     vehicleComponents: [VehicleComponentSchema],
+    history: [
+      {
+        userId: { type: Schema.Types.ObjectId, ref: "User" },
+        changedAt: { type: Date, default: Date.now },
+        changes: { type: String, required: true },
+        _id: false,
+      },
+    ],
     createdAt: { type: Date, default: Date.now },
   },
   { timestamps: { updatedAt: false } },

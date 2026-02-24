@@ -801,16 +801,31 @@ const updateReinspectionStateController = async (req, res) => {
       });
     }
 
+    let changesMade = [];
+
     if (vehicleState) {
       vehicleState.forEach((newStateItem) => {
         const existingItemIndex = reinspection.vehicleState.findIndex(
           (item) => item.name === newStateItem.name,
         );
         if (existingItemIndex > -1) {
-          reinspection.vehicleState[existingItemIndex].rating =
-            newStateItem.rating;
+          const oldRating = reinspection.vehicleState[existingItemIndex].rating;
+          if (oldRating !== newStateItem.rating) {
+            changesMade.push(
+              `Estado de '${newStateItem.name}' cambió de ${oldRating} a ${newStateItem.rating}`,
+            );
+            reinspection.vehicleState[existingItemIndex].rating =
+              newStateItem.rating;
+            reinspection.vehicleState[existingItemIndex].isNewValue = true;
+          }
         } else {
-          reinspection.vehicleState.push(newStateItem);
+          changesMade.push(
+            `Se agregó estado '${newStateItem.name}' con valor ${newStateItem.rating}`,
+          );
+          reinspection.vehicleState.push({
+            ...newStateItem,
+            isNewValue: true,
+          });
         }
       });
     }
@@ -821,11 +836,36 @@ const updateReinspectionStateController = async (req, res) => {
           (item) => item.name === newCompItem.name,
         );
         if (existingItemIndex > -1) {
-          reinspection.vehicleComponents[existingItemIndex].state =
-            newCompItem.state;
+          const oldState =
+            reinspection.vehicleComponents[existingItemIndex].state;
+          if (oldState !== newCompItem.state) {
+            changesMade.push(
+              `Componente '${newCompItem.name}' cambió de ${oldState} a ${newCompItem.state}`,
+            );
+            reinspection.vehicleComponents[existingItemIndex].state =
+              newCompItem.state;
+            reinspection.vehicleComponents[existingItemIndex].isNewValue = true;
+          }
         } else {
-          reinspection.vehicleComponents.push(newCompItem);
+          changesMade.push(
+            `Se agregó componente '${newCompItem.name}' con estado ${newCompItem.state}`,
+          );
+          reinspection.vehicleComponents.push({
+            ...newCompItem,
+            isNewValue: true,
+          });
         }
+      });
+    }
+
+    if (changesMade.length > 0) {
+      if (!reinspection.history) {
+        reinspection.history = [];
+      }
+      reinspection.history.push({
+        userId: req.user ? req.user.id : null,
+        changedAt: new Date(),
+        changes: changesMade.join(" | "),
       });
     }
 
