@@ -27,7 +27,12 @@ router.post("/users/create", authMiddleware, createDistributorUser);
 router.post("/update", updateDistributor);
 router.post("/products/create", createDistributorProduct);
 router.post("/collection/create", createDistributorCollection);
-router.post("/upload/images", uploadMiddleware, uploadDistributorImages);
+router.post(
+  "/upload/images",
+  authMiddleware,
+  uploadMiddleware,
+  uploadDistributorImages,
+);
 
 router.patch("/collection/update", updateDistributorCollection);
 

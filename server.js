@@ -29,6 +29,8 @@ app.use(express.urlencoded({ extended: false }));
 // Routes
 const authMiddleware = require("./middlewares/auth.middleware");
 
+const path = require("path");
+
 // Routes
 app.use("/message", messageRoutes);
 app.use("/order", orderRoutes);
@@ -39,6 +41,9 @@ app.use("/auth", authRoutes);
 app.use("/booking", bookingRoutes);
 app.use("/inspection", authMiddleware, inspectionRoutes);
 app.use("/vehicle", authMiddleware, vehicleRoutes);
+
+// Servir archivos estáticos de la carpeta public/images (imágenes, etc.)
+app.use("/images", express.static(path.join(__dirname, "public/images")));
 
 // Health check endpoint
 app.get("/health", (req, res) => {

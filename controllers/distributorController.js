@@ -448,34 +448,63 @@ const deleteDistributorCollection = async (req, res) => {
   }
 };
 
+const path = require("path");
+const sharp = require("sharp");
+
 const uploadDistributorImages = async (req, res) => {
   try {
-    const { cloudinary, body } = req;
-    const { files } = body;
+    const files = req.files;
 
     if (!files || files.length === 0) {
       return res.status(400).json({ message: "No images provided" });
     }
 
-    // Subir cada imagen a Cloudinary
-    const uploadPromises = files.map((file) =>
-      cloudinary.uploader.upload(file.path, {
-        folder: "servizio", // opcional: nombre de carpeta en Cloudinary
-      }),
-    );
+    // Directorio donde se guardarán las imágenes
+    const uploadDir = path.join(__dirname, "..", "public", "images");
+
+    // Crear el directorio si no existe
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const uploadPromises = files.map(async (file) => {
+      // Nombre de archivo único
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
+      const outputPath = path.join(uploadDir, filename);
+
+      // Usar sharp para optimizar y convertir a webp
+      await sharp(file.path)
+        .resize({ width: 1024, withoutEnlargement: true }) // Redimensionar ancho máximo
+        .webp({ quality: 80 }) // Convertir a webp y ajustar calidad
+        .toFile(outputPath);
+
+      // La URL base (podría venir del env en produccion)
+      let baseUrl = `${req.protocol}://${req.get("host")}`;
+      if (process.env.NODE_ENV === "development") {
+        baseUrl = "http://localhost:3000";
+      }
+      return `${baseUrl}/images/${filename}`;
+    });
 
     const results = await Promise.all(uploadPromises);
 
-    // Borrar archivos temporales locales
-    files.forEach((file) => fs.unlinkSync(file.path));
+    // Borrar archivos temporales locales creados por multer
+    files.forEach(
+      (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+    );
 
-    // Enviar URLs resultantes
     res.json({
-      message: "Images uploaded successfully",
-      images: results.map((r) => r.secure_url),
+      message: "Images uploaded and optimized successfully",
+      images: results,
     });
   } catch (error) {
     console.error("Upload error:", error);
+    // Intentar limpiar en caso de error
+    if (req.files) {
+      req.files.forEach(
+        (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+      );
+    }
     res.status(500).json({ message: "Error uploading images" });
   }
 };

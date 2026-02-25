@@ -1,6 +1,9 @@
 const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
 const { Reinspection } = require("../models/Reinspection");
+const fs = require("fs");
+const path = require("path");
+const sharp = require("sharp");
 
 const calculateInspectionRatings = (
   componentList,
@@ -47,15 +50,34 @@ const calculateInspectionRatings = (
 
 const createInspectionController = async (req, res) => {
   try {
-    const { inspectionData } = req.body;
+    let { inspectionData } = req.body;
+
+    // Si la data viene como JSON string desde multipart/form-data
+    if (typeof inspectionData === "string") {
+      try {
+        inspectionData = JSON.parse(inspectionData);
+      } catch (e) {
+        if (req.files) {
+          req.files.forEach(
+            (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+          );
+        }
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid JSON in inspectionData." });
+      }
+    }
+
+    const ObjectData = typeof inspectionData === "object" ? inspectionData : {};
     const user = req.user;
 
     // 1. Data Validation (Basic)
-    if (
-      !inspectionData ||
-      !inspectionData.matricula ||
-      !inspectionData.numeroChasis
-    ) {
+    if (!ObjectData || !ObjectData.matricula || !ObjectData.numeroChasis) {
+      if (req.files) {
+        req.files.forEach(
+          (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+        );
+      }
       return res.status(400).json({
         success: false,
         message:
@@ -69,6 +91,11 @@ const createInspectionController = async (req, res) => {
     const inspectorId = user.id;
 
     if (!businessId) {
+      if (req.files) {
+        req.files.forEach(
+          (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+        );
+      }
       return res.status(400).json({
         success: false,
         message:
@@ -81,9 +108,9 @@ const createInspectionController = async (req, res) => {
     // then use that rating for vehicle creation/update
 
     // Map components (Stars)
-    const componentKeys = Object.keys(inspectionData.componentes || {});
+    const componentKeys = Object.keys(ObjectData.componentes || {});
     const vehicleState = componentKeys.map((key) => {
-      const rating = parseInt(inspectionData.componentes[key] || 0, 10);
+      const rating = parseInt(ObjectData.componentes[key] || 0, 10);
       return {
         name: key,
         rating: rating,
@@ -91,11 +118,9 @@ const createInspectionController = async (req, res) => {
     });
 
     // Map componentsIncluded to Schema format
-    const checklistKeys = Object.keys(
-      inspectionData.componentesIncluidos || {},
-    );
+    const checklistKeys = Object.keys(ObjectData.componentesIncluidos || {});
     const vehicleComponents = checklistKeys.map((key) => {
-      const val = parseInt(inspectionData.componentesIncluidos[key], 10);
+      const val = parseInt(ObjectData.componentesIncluidos[key], 10);
       return {
         name: key,
         state: isNaN(val) ? 0 : val,
@@ -106,11 +131,11 @@ const createInspectionController = async (req, res) => {
       calculateInspectionRatings(
         vehicleState,
         vehicleComponents,
-        inspectionData.ratingComponentes,
+        ObjectData.ratingComponentes,
       );
 
     let vehicle = await Vehicle.findOne({
-      plate: inspectionData.matricula,
+      plate: ObjectData.matricula,
       businessId: businessId,
     });
 
@@ -118,11 +143,11 @@ const createInspectionController = async (req, res) => {
       vehicle = new Vehicle({
         businessId: businessId,
         entityId: entityId || "UNKNOWN", // Fallback if missing?
-        plate: inspectionData.matricula,
-        vin: inspectionData.numeroChasis,
-        brand: inspectionData.marca,
-        model: inspectionData.modelo,
-        year: parseInt(inspectionData.ano, 10),
+        plate: ObjectData.matricula,
+        vin: ObjectData.numeroChasis,
+        brand: ObjectData.marca,
+        model: ObjectData.modelo,
+        year: parseInt(ObjectData.ano, 10),
         status: "PENDING_REVIEW", // Initial status after inspection?
         rating: overallRating, // Use overall rating
       });
@@ -136,22 +161,62 @@ const createInspectionController = async (req, res) => {
     const savedVehicle = await vehicle.save();
 
     if (!savedVehicle) {
+      if (req.files) {
+        req.files.forEach(
+          (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+        );
+      }
       throw new Error(
         "Error crítico: No se pudo crear o actualizar el vehículo. Verifique los datos.",
       );
     }
 
-    // 4. Create Inspection
-    // Map photos to Schema format { url, alt }
-    // Assuming inspectionData.fotos is array of strings or objects?
-    // Prompt says `fotos: []`. Let's assume strings for now or handle both.
-    // If input is ["url1", "url2"], map to {url: "url1", alt: "Foto de inspeccion"}
-    const photos = (inspectionData.fotos || []).map((foto, index) => {
-      if (typeof foto === "string") {
-        return { url: foto, alt: `Foto ${index + 1}` };
+    // 4. Create Inspection Photos Array
+    let photos = [];
+
+    if (req.files && req.files.length > 0) {
+      const uploadDir = path.join(__dirname, "..", "public", "images");
+
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
       }
-      return { url: foto.url, alt: foto.alt || `Foto ${index + 1}` };
-    });
+
+      const uploadPromises = req.files.map(async (file, index) => {
+        const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
+        const outputPath = path.join(uploadDir, filename);
+
+        await sharp(file.path)
+          .resize({ width: 1024, withoutEnlargement: true })
+          .webp({ quality: 80 })
+          .toFile(outputPath);
+
+        let baseUrl = `${req.protocol}://${req.get("host")}`;
+        if (process.env.NODE_ENV === "development") {
+          baseUrl = "http://localhost:3000";
+        }
+
+        return {
+          url: `${baseUrl}/images/${filename}`,
+          alt: `Foto ${index + 1}`,
+        };
+      });
+
+      photos = await Promise.all(uploadPromises);
+
+      // Limpiar temporales
+      req.files.forEach(
+        (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+      );
+    } else {
+      // Support for old JSON string fallback
+      const fallbackPhotos = ObjectData.fotos || [];
+      photos = fallbackPhotos.map((foto, index) => {
+        if (typeof foto === "string") {
+          return { url: foto, alt: `Foto ${index + 1}` };
+        }
+        return { url: foto.url, alt: foto.alt || `Foto ${index + 1}` };
+      });
+    }
 
     const newInspection = await Inspection.create({
       businessId: businessId,
@@ -160,8 +225,8 @@ const createInspectionController = async (req, res) => {
       inspectorId: inspectorId,
       inspectionType: "INSPECTION",
       metadata: {
-        mileage: parseInt(inspectionData.kilometros, 10),
-        notes: inspectionData.observaciones,
+        mileage: parseInt(ObjectData.kilometros, 10),
+        notes: ObjectData.observaciones,
         // location and externalTemp not in provided payload, skipping
       },
       checklistRating: checklistRating,
@@ -169,8 +234,6 @@ const createInspectionController = async (req, res) => {
       vehicleState: vehicleState,
       vehicleComponents: vehicleComponents,
       photos: photos,
-      // damagePoints: inspectionData.damagePoints // Not explicitly in Inspection Schema shown, skipping or adding to notes?
-      // Schema didn't show 'damagePoints'. Adding to notes or ignoring.
     });
 
     // Update vehicle with latest inspection
@@ -187,6 +250,11 @@ const createInspectionController = async (req, res) => {
       },
     });
   } catch (error) {
+    if (req.files) {
+      req.files.forEach(
+        (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
+      );
+    }
     console.error("Error en createInspectionController:", error);
     return res.status(500).json({
       success: false,

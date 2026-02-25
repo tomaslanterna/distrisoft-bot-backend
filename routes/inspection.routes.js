@@ -13,9 +13,11 @@ const {
 const isTechnician = require("../middlewares/isTechnician.middleware");
 const authMiddleware = require("../middlewares/auth.middleware");
 
+const { uploadMiddleware } = require("../middlewares/uploadMiddlewares");
+
 const router = express.Router();
 
-router.post("/create", createInspectionController);
+router.post("/create", uploadMiddleware, createInspectionController);
 router.post("/verify/:id", verifyInspectionController);
 router.post("/confirm/:id", confirmInspectionController);
 router.get("/type/:type", getInspectionsByTypeController);
