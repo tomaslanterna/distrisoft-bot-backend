@@ -4,6 +4,36 @@ const { Reinspection } = require("../models/Reinspection");
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Inicializar Gemini API
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// Helper function para invocar a Gemini con Exponential Backoff
+const callGeminiWithBackoff = async (model, contents, maxRetries = 3) => {
+  let attempt = 0;
+  let delay = 1000; // 1 segundo inicial
+
+  while (attempt < maxRetries) {
+    try {
+      return await model.generateContent(contents);
+    } catch (error) {
+      if (
+        (error.status === 429 || error.status === 503) &&
+        attempt < maxRetries - 1
+      ) {
+        attempt++;
+        console.warn(
+          `Gemini API error ${error.status}. Retrying in ${delay}ms... (Attempt ${attempt}/${maxRetries - 1})`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay *= 2; // Exponential backoff
+      } else {
+        throw error;
+      }
+    }
+  }
+};
 
 const calculateInspectionRatings = (
   componentList,
@@ -174,6 +204,16 @@ const createInspectionController = async (req, res) => {
     // 4. Create Inspection Photos Array
     let photos = [];
 
+    // Fallback: Si se envían URLs previas (ej: desde IA), las mapeamos primero
+    const fallbackPhotos = ObjectData.fotos || [];
+    photos = fallbackPhotos.map((foto, index) => {
+      if (typeof foto === "string") {
+        return { url: foto, alt: `Foto ${index + 1}` };
+      }
+      return { url: foto.url, alt: foto.alt || `Foto ${index + 1}` };
+    });
+
+    // Si además vienen fotos adjuntas, las guardamos y las agreamos
     if (req.files && req.files.length > 0) {
       const uploadDir = path.join(__dirname, "..", "public", "images");
 
@@ -197,25 +237,17 @@ const createInspectionController = async (req, res) => {
 
         return {
           url: `${baseUrl}/images/${filename}`,
-          alt: `Foto ${index + 1}`,
+          alt: `Foto Adicional ${photos.length + index + 1}`,
         };
       });
 
-      photos = await Promise.all(uploadPromises);
+      const uploadedPhotos = await Promise.all(uploadPromises);
+      photos = [...photos, ...uploadedPhotos];
 
       // Limpiar temporales
       req.files.forEach(
         (file) => fs.existsSync(file.path) && fs.unlinkSync(file.path),
       );
-    } else {
-      // Support for old JSON string fallback
-      const fallbackPhotos = ObjectData.fotos || [];
-      photos = fallbackPhotos.map((foto, index) => {
-        if (typeof foto === "string") {
-          return { url: foto, alt: `Foto ${index + 1}` };
-        }
-        return { url: foto.url, alt: foto.alt || `Foto ${index + 1}` };
-      });
     }
 
     const newInspection = await Inspection.create({
@@ -965,6 +997,283 @@ const updateReinspectionStateController = async (req, res) => {
   }
 };
 
+const analyzePhotosController = async (req, res) => {
+  try {
+    const user = req.user;
+
+    const businessId = user?.distributorId;
+    const entityId = user?.distributorChannelId;
+    const inspectorId = user?.id;
+
+    if (!businessId) {
+      // Limpiar archivos subidos en caso de error
+      if (req.files) {
+        if (req.files.photos)
+          req.files.photos.forEach(
+            (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+          );
+        if (req.files.audio)
+          req.files.audio.forEach(
+            (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+          );
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Usuario no asociado a un distribuidor.",
+      });
+    }
+
+    const photos = req.files?.photos || [];
+    const audios = req.files?.audio || [];
+
+    if (photos.length < 6) {
+      if (req.files) {
+        if (req.files.photos)
+          req.files.photos.forEach(
+            (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+          );
+        if (req.files.audio)
+          req.files.audio.forEach(
+            (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+          );
+      }
+      return res.status(400).json({
+        success: false,
+        message:
+          "Se requieren al menos 6 fotos para realizar el análisis inteligente.",
+      });
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+    });
+
+    // Preparar el System Prompt
+    const systemPrompt = `Eres un "Analizador Inteligente de Peritajes" de vehículos.
+Analizarás un conjunto de imágenes (y opcionalmente un audio del motor) proporcionados por el usuario para extraer información estructurada que servirá de borrador para una inspección.
+
+**INSTRUCCIONES DE ANÁLISIS:**
+1. **Análisis de Documentación:** Busca la placa (patente), marca y modelo del vehículo.
+*Nota importante:* El número de chasis (VIN) es opcional. Si se detecta, extráelo; si no es visible o legible, déjalo como un string vacío "" sin marcar error.
+2. **Análisis de Odómetro:** Extrae el kilometraje numérico exacto visible en el tablero. Si es digital, valida los dígitos; si es analógico, estima con precisión.
+3. **Valoración de Estado (vehicleState):** Evalúa visualmente (y mediante el audio para el motor, si está presente) y asigna un "rating" (entero del 0 al 5, donde 5 es perfecto y 0 es en pésimo estado) estrictamente a estas partes (usa exactamente estos nombres en el atributo 'name'):
+- pintura, chapa, cubiertas, parabrisas, tapizado, motor, embrage, caja, trenDelantero, trenTrasero, amortiguadores, frenos, frenoMano, lucesTablero, aireAcondicionado, bateria.
+*IMPORTANTE:* Para los componentes que NO puedas percibir, ver o evaluar claramente en las fotos proporcionadas (porque no hay ángulo, foto faltante, etc), asígnales estrictamente el valor de rating \`0\`.
+${audios.length === 0 ? "*IMPORTANTE: Como NO se adjuntó archivo de audio, el sonido no pudo ser evaluado. Debes obligatoriamente dejar el valor de 'rating' como `null` para: 'motor', 'embrage' y 'caja', de modo que los recuadros queden vacíos para revisión manual.*" : "*IMPORTANTE: Se ha adjuntado un archivo de audio. Escúchalo determinadamente para evaluar ruidos anormales del 'motor', 'embrage' y 'caja', asignándoles su respectivo 'rating'.*"}
+4. **Checklist de Componentes (vehicleComponents):** Identifica la presencia de estrictamente estos componentes (usa exactamente estos nombres en el atributo 'name'):
+- aa, da, airbags, radio, vidriosElectricos, techoPanoramico, alfombras, alarma, bloqueo, llave1, llave2, control1, control2, llantas, tazas, estribos, barraAntiVuelco, barrasTecho, defensa, enganche, traccion4x4, lonaMaritima, cubreCaja, auxiliar, llave, gato, computest.
+*Importante:* Usa el ENUM para 'state': 0 (No tiene/No detectado), 1 (Tiene y está OK), 2 (Tiene pero Dudoso/Requiere revisión manual).
+5. **Generación de Alt Text:** Para cada imagen, crea una descripción técnica corta en español (ej: "Foto de perfil lateral derecho con rayón leve en puerta trasera").
+
+**ESTRUCTURA DE RESPUESTA REQUERIDA:**
+Debes devolver **EXCLUSIVAMENTE** un string en formato JSON válido que coincida exactamente con la siguiente estructura. No incluyas bloques de código markdown, ni saludos, ni ningún otro texto fuera del JSON.
+
+{
+  "metadata": {
+    "mileage": Number,
+    "location": String o null,
+    "notes": "Informe preliminar generado por IA basado en el análisis de las fotos y audio."
+  },
+  "vehicle": {
+    "brand": String,
+    "model": String,
+    "plate": String,
+    "vin": String || ""
+  },
+  "vehicleState": [
+    { "name": "pintura", "rating": Number },
+    { "name": "chapa", "rating": Number },
+    { "name": "cubiertas", "rating": Number },
+    { "name": "parabrisas", "rating": Number },
+    { "name": "tapizado", "rating": Number },
+    { "name": "motor", "rating": "Number o null" },
+    { "name": "embrage", "rating": "Number o null" },
+    { "name": "caja", "rating": "Number o null" },
+    { "name": "trenDelantero", "rating": Number },
+    { "name": "trenTrasero", "rating": Number },
+    { "name": "amortiguadores", "rating": Number },
+    { "name": "frenos", "rating": Number },
+    { "name": "frenoMano", "rating": Number },
+    { "name": "lucesTablero", "rating": Number },
+    { "name": "aireAcondicionado", "rating": Number },
+    { "name": "bateria", "rating": Number }
+  ],
+  "vehicleComponents": [
+    { "name": "aa", "state": Number },
+    { "name": "da", "state": Number },
+    { "name": "airbags", "state": Number },
+    { "name": "radio", "state": Number },
+    { "name": "vidriosElectricos", "state": Number },
+    { "name": "techoPanoramico", "state": Number },
+    { "name": "alfombras", "state": Number },
+    { "name": "alarma", "state": Number },
+    { "name": "bloqueo", "state": Number },
+    { "name": "llave1", "state": Number },
+    { "name": "llave2", "state": Number },
+    { "name": "control1", "state": Number },
+    { "name": "control2", "state": Number },
+    { "name": "llantas", "state": Number },
+    { "name": "tazas", "state": Number },
+    { "name": "estribos", "state": Number },
+    { "name": "barraAntiVuelco", "state": Number },
+    { "name": "barrasTecho", "state": Number },
+    { "name": "defensa", "state": Number },
+    { "name": "enganche", "state": Number },
+    { "name": "traccion4x4", "state": Number },
+    { "name": "lonaMaritima", "state": Number },
+    { "name": "cubreCaja", "state": Number },
+    { "name": "auxiliar", "state": Number },
+    { "name": "llave", "state": Number },
+    { "name": "gato", "state": Number },
+    { "name": "computest", "state": Number }
+  ],
+  "photos": [
+    { "url": "", "alt": "Descripción corta generada para la foto 1" },
+    { "url": "", "alt": "Descripción corta generada para la foto 2" }
+  ]
+}`;
+
+    // Preparar el array de partes para Gemini (Prompt + Archivos)
+    const geminiParts = [{ text: systemPrompt }];
+
+    // Procesar Fotos
+    for (const file of photos) {
+      const mimeType = file.mimetype;
+      const fileData = fs.readFileSync(file.path);
+      geminiParts.push({
+        inlineData: {
+          data: fileData.toString("base64"),
+          mimeType,
+        },
+      });
+    }
+
+    // Procesar Audio (si existe)
+    if (audios.length > 0) {
+      const audioFile = audios[0];
+      const audioData = fs.readFileSync(audioFile.path);
+      geminiParts.push({
+        inlineData: {
+          data: audioData.toString("base64"),
+          mimeType: audioFile.mimetype,
+        },
+      });
+    }
+
+    // Realizar llamada a Gemini con backoff
+    const result = await callGeminiWithBackoff(model, geminiParts);
+    let resultText = result.response.text();
+
+    // Limpieza de Respuesta (Remover markdown json)
+    if (resultText.includes("\`\`\`json")) {
+      resultText = resultText.replace(/\`\`\`json\n|\n\`\`\`/g, "");
+    } else if (resultText.includes("\`\`\`")) {
+      resultText = resultText.replace(/\`\`\`\n|\n\`\`\`/g, "");
+    }
+
+    let structuredData;
+    try {
+      structuredData = JSON.parse(resultText.trim());
+    } catch (parseError) {
+      // Intentar extraer JSON via Regex como fallback
+      const match = resultText.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          structuredData = JSON.parse(match[0]);
+        } catch (e) {
+          throw new Error(
+            "La IA no devolvió un JSON válido. Respuesta: " + resultText,
+          );
+        }
+      } else {
+        throw new Error(
+          "La IA no devolvió un JSON parseable. Respuesta: " + resultText,
+        );
+      }
+    }
+
+    // Guardar las imágenes procesadas en public/images/ como hace la creación de peritaje
+    const uploadDir = path.join(__dirname, "..", "public", "images");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    let baseUrl = `${req.protocol}://${req.get("host")}`;
+    if (process.env.NODE_ENV === "development") {
+      baseUrl = "http://localhost:3000";
+    }
+
+    const uploadPromises = photos.map(async (file, index) => {
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
+      const outputPath = path.join(uploadDir, filename);
+
+      await sharp(file.path)
+        .resize({ width: 1024, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(outputPath);
+
+      // Usar el alt descriptivo generado por la IA si existe
+      const aiAlt =
+        structuredData.photos &&
+        structuredData.photos[index] &&
+        structuredData.photos[index].alt
+          ? structuredData.photos[index].alt
+          : `Foto ${index + 1}`;
+
+      return {
+        url: `${baseUrl}/images/${filename}`,
+        alt: aiAlt,
+      };
+    });
+
+    // Reemplazar el array vacío de fotos que mandó la IA por las URLs definitivas que persistiremos
+    structuredData.photos = await Promise.all(uploadPromises);
+
+    // Construir la respuesta final de la API
+    const finalResponse = {
+      success: true,
+      data: {
+        ...structuredData,
+        inspectionType: "INSPECTION",
+        businessId: businessId,
+        entityId: entityId || null,
+      },
+    };
+
+    // Limpiar temporales
+    if (req.files) {
+      if (req.files.photos)
+        req.files.photos.forEach(
+          (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+        );
+      if (req.files.audio)
+        req.files.audio.forEach(
+          (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+        );
+    }
+
+    return res.status(200).json(finalResponse);
+  } catch (error) {
+    // Limpiar temporales en caso de fallo crítico
+    if (req.files) {
+      if (req.files.photos)
+        req.files.photos.forEach(
+          (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+        );
+      if (req.files.audio)
+        req.files.audio.forEach(
+          (f) => fs.existsSync(f.path) && fs.unlinkSync(f.path),
+        );
+    }
+
+    console.error("Error en analyzePhotosController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Error al analizar las fotos con IA",
+    });
+  }
+};
+
 module.exports = {
   createInspectionController,
   verifyInspectionController,
@@ -975,4 +1284,5 @@ module.exports = {
   getInspectionsByFilterController,
   getReinspectionsByFilterController,
   updateReinspectionStateController,
+  analyzePhotosController,
 };
