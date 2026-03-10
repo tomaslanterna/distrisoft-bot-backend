@@ -1046,6 +1046,7 @@ const analyzePhotosController = async (req, res) => {
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
+      tools: [{ googleSearch: {} }],
     });
 
     // Preparar el System Prompt
@@ -1054,6 +1055,7 @@ Analizarás un conjunto de imágenes (y opcionalmente un audio del motor) propor
 
 **INSTRUCCIONES DE ANÁLISIS:**
 1. **Análisis de Documentación:** Busca la placa (patente), marca y modelo del vehículo.
+*Nota crucial:* Si entre las fotos detectas la foto de la libreta de propiedad, título y/o documento de identidad del vehículo, **DEBES usar ESA foto como la fuente principal y definitiva** para extraer la placa, marca, modelo y VIN, descartando otras inferencias del exterior del vehículo si hubiera discrepancias.
 *Nota importante:* El número de chasis (VIN) es opcional. Si se detecta, extráelo; si no es visible o legible, déjalo como un string vacío "" sin marcar error.
 2. **Análisis de Odómetro:** Extrae el kilometraje numérico exacto visible en el tablero. Si es digital, valida los dígitos; si es analógico, estima con precisión.
 3. **Valoración de Estado (vehicleState):** Evalúa visualmente (y mediante el audio para el motor, si está presente) y asigna un "rating" (entero del 0 al 5, donde 5 es perfecto y 0 es en pésimo estado) estrictamente a estas partes (usa exactamente estos nombres en el atributo 'name'):
@@ -1064,6 +1066,7 @@ ${audios.length === 0 ? "*IMPORTANTE: Como NO se adjuntó archivo de audio, el s
 - aa, da, airbags, radio, vidriosElectricos, techoPanoramico, alfombras, alarma, bloqueo, llave1, llave2, control1, control2, llantas, tazas, estribos, barraAntiVuelco, barrasTecho, defensa, enganche, traccion4x4, lonaMaritima, cubreCaja, auxiliar, llave, gato, computest.
 *Importante:* Usa el ENUM para 'state': 0 (No tiene/No detectado), 1 (Tiene y está OK), 2 (Tiene pero Dudoso/Requiere revisión manual).
 5. **Generación de Alt Text:** Para cada imagen, crea una descripción técnica corta en español (ej: "Foto de perfil lateral derecho con rayón leve en puerta trasera").
+6. **Valoración de Mercado:** Busca en internet el valor aproximado de venta del vehículo en la actualidad (teniendo en cuenta la marca, modelo y año estimado) y retórnalo estrictamente como un número en la propiedad "totalValue". Si no puedes encontrar un precio exacto, haz tu mejor estimación numérica.
 
 **ESTRUCTURA DE RESPUESTA REQUERIDA:**
 Debes devolver **EXCLUSIVAMENTE** un string en formato JSON válido que coincida exactamente con la siguiente estructura. No incluyas bloques de código markdown, ni saludos, ni ningún otro texto fuera del JSON.
@@ -1080,6 +1083,7 @@ Debes devolver **EXCLUSIVAMENTE** un string en formato JSON válido que coincida
     "plate": String,
     "vin": String || ""
   },
+  "totalValue": Number,
   "vehicleState": [
     { "name": "pintura", "rating": Number },
     { "name": "chapa", "rating": Number },
