@@ -1,42 +1,15 @@
-const { Vehicle } = require("../models/Vehicle");
-const { Inspection } = require("../models/Inspection");
-const { Reinspection } = require("../models/Reinspection");
 const fs = require("fs");
 const path = require("path");
 const sharp = require("sharp");
+
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-// Inicializar Gemini API
+const { Vehicle } = require("../models/Vehicle");
+const { Inspection } = require("../models/Inspection");
+const { Reinspection } = require("../models/Reinspection");
+const { callGeminiWithRetry } = require("../services/gemini.service");
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Helper function para invocar a Gemini con Exponential Backoff
-const callGeminiWithBackoff = async (model, contents, maxRetries = 3) => {
-  let attempt = 0;
-  let delay = 1000; // 1 segundo inicial
-
-  while (attempt < maxRetries) {
-    try {
-      return await model.generateContent(contents);
-    } catch (error) {
-      if (
-        (error.status >= 500 ||
-          error.status === 429 ||
-          error.message.includes("500") ||
-          error.message.includes("Internal Server Error")) &&
-        attempt < maxRetries - 1
-      ) {
-        attempt++;
-        console.warn(
-          `Gemini API error ${error.status || error.message}. Retrying in ${delay}ms... (Attempt ${attempt}/${maxRetries - 1})`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
-      } else {
-        throw error;
-      }
-    }
-  }
-};
 
 const calculateInspectionRatings = (
   componentList,
@@ -1049,7 +1022,9 @@ const analyzePhotosController = async (req, res) => {
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
-      tools: [{ googleSearch: {} }],
+      generationConfig: {
+        responseMimeType: "application/json", // Esto obliga a la IA a devolver un JSON válido
+      },
     });
 
     // Preparar el System Prompt
@@ -1230,7 +1205,8 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
 "brand": "Marca",
 "model": "Modelo",
 "plate": "Matrícula",
-"vin": "Nro. de Chasis"
+"vin": "Nro. de Chasis",
+"year": "Año"
 },
 "totalValue": 0,
 "vehicleState": [
@@ -1313,7 +1289,7 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
     }
 
     // Realizar llamada a Gemini con backoff
-    const result = await callGeminiWithBackoff(model, geminiParts);
+    const result = await callGeminiWithRetry(model, geminiParts);
     let resultText = result.response.text();
 
     // Limpieza de Respuesta (Remover markdown json)
