@@ -1025,7 +1025,6 @@ const analyzePhotosController = async (req, res) => {
       generationConfig: {
         responseMimeType: "application/json", // Esto obliga a la IA a devolver un JSON válido
       },
-      tools: [{ googleSearch: {} }],
     });
 
     // Preparar el System Prompt
