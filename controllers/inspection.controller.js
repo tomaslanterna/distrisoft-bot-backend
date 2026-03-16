@@ -1129,13 +1129,13 @@ Para cada campo, aplica los siguientes criterios antes de calificar:
 - Motor (Visual): Busca manchas de aceite frescas (brillantes), depósitos blanquecinos en bornes de batería, mangueras resecas o con grietas, y niveles de fluidos si son visibles.
 
 - Tablero y Luces: 
-* Rojo Crítico (Falla grave): Iconos de Presión de aceite, Temperatura del refrigerante, Sistema de Carga/Batería o Sistema de Frenos (falla hidráulica). Baja el rating a 1 o 2.
+* Rojo Informativo (Estado/Seguridad) NO BAJA EL RATING: Iconos de Cinturón de seguridad desabrochado, Freno de mano colocado/activo o Puertas abiertas.
 
-* Rojo Informativo (Estado/Seguridad): Iconos de Cinturón de seguridad desabrochado, Freno de mano colocado/activo o Puertas abiertas. No baja el rating.
+* Rojo Crítico (Falla grave): Iconos de Presión de aceite, Temperatura del refrigerante, Sistema de Carga/Batería o Sistema de Frenos (falla hidráulica). Baja el rating a 1 o 2.
 
 * Amarillo/Ámbar (Advertencia): Check Engine, ABS, Airbag, EPC, o Control de Tracción. Baja el rating a 3.
 
-* Informativo (General): Reserva de combustible, Luces encendidas, Control de crucero o ECO. No baja el rating.
+* Informativo (General) NO BAJA EL RATING: Reserva de combustible, Luces encendidas, Control de crucero o ECO.
 
 - Cubiertas: Observa la profundidad del dibujo y el estado de los flancos (sin "huevos" o cortes). 5 = Dibujo profundo, 1 = Lisa/Testigo de desgaste alcanzado.
 
@@ -1191,6 +1191,8 @@ INSTRUCCIONES DE ANÁLISIS POR CAPAS:
 
 * Busca el valor actual en portales líderes (ej. Mercado Libre) según el país. Ajusta el totalValue según el estado general y kilometraje.
 
+*Busca el % de venta que puede tener el vehiculo. Este porcentaje se calcula en base a la cantidad de ventas que tiene el vehiculo en el mercado teniendo en cuenta su precio, estado (para su estado usa unicamente los valores visuales que obtenes como chapa, pintura, cubiertas y kilometraje) y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
+
 ESTRUCTURA DE RESPUESTA (JSON ESTRICTO):
 
 Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
@@ -1209,6 +1211,7 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
 "year": "Año"
 },
 "totalValue": 0,
+"successPercentage": 0,
 "vehicleState": [
 { "name": "pintura", "rating": 0 },
 { "name": "chapa", "rating": 0 },
