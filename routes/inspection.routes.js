@@ -10,6 +10,7 @@ const {
   getReinspectionsByFilterController,
   updateReinspectionStateController,
   analyzePhotosController,
+  proxyImageController,
 } = require("../controllers/inspection.controller");
 const isTechnician = require("../middlewares/isTechnician.middleware");
 const authMiddleware = require("../middlewares/auth.middleware");
@@ -36,9 +37,6 @@ router.get("/type/:type", getInspectionsByTypeController);
 router.get("/plate/:plate", getInspectionByPlateController);
 // User requested separate endpoints status update
 router.post("/status/:id", updateInspectionStatusController);
-
-router.get("/filter", getInspectionsByFilterController);
-router.get("/reinspections/filter", getReinspectionsByFilterController);
 
 // Technician routes
 router.put(

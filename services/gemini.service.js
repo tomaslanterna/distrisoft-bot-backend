@@ -7,10 +7,10 @@ const callGeminiWithRetry = async (model, contents) => {
         return await model.generateContent(contents);
       },
       {
-        retries: 3,
-        minTimeout: 1000,
-        maxTimeout: 5000,
-        factor: 2,
+        retries: 1,
+        minTimeout: 60000,
+        maxTimeout: 60000,
+        factor: 1,
         onFailedAttempt: (error) => {
           console.warn(
             `Fallo en comunicación con Gemini. Intento ${error.attemptNumber} falló. Error: ${error.message || error.status}. Quedan ${error.retriesLeft} reintentos.`,

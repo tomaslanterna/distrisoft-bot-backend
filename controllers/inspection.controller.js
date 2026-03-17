@@ -8,8 +8,16 @@ const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
 const { Reinspection } = require("../models/Reinspection");
 const { callGeminiWithRetry } = require("../services/gemini.service");
+const { uploadToS3, getObjectStream } = require("../services/s3.service");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+const getProxyUrl = (req, key) => {
+  if (!key) return null;
+  if (key.startsWith("http")) return key;
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  return `${baseUrl}/media/image?key=${encodeURIComponent(key)}`;
+};
 
 const calculateInspectionRatings = (
   componentList,
@@ -180,39 +188,31 @@ const createInspectionController = async (req, res) => {
     // 4. Create Inspection Photos Array
     let photos = [];
 
-    // Fallback: Si se envían URLs previas (ej: desde IA), las mapeamos primero
+    // Fallback: Si se envían Keys previas (ej: desde IA), las mapeamos
     const fallbackPhotos = ObjectData.fotos || [];
     photos = fallbackPhotos.map((foto, index) => {
+      // Guardamos la Key (que es lo que viene en 'url' desde la IA)
       if (typeof foto === "string") {
         return { url: foto, alt: `Foto ${index + 1}` };
       }
       return { url: foto.url, alt: foto.alt || `Foto ${index + 1}` };
     });
 
-    // Si además vienen fotos adjuntas, las guardamos y las agreamos
+    // Si además vienen fotos adjuntas, las subimos a S3
     if (req.files && req.files.length > 0) {
-      const uploadDir = path.join(__dirname, "..", "public", "images");
-
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-
       const uploadPromises = req.files.map(async (file, index) => {
-        const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
-        const outputPath = path.join(uploadDir, filename);
+        const key = `perito/${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
 
-        await sharp(file.path)
+        // Optimizamos con sharp antes de subir
+        const optimizedBuffer = await sharp(file.path)
           .resize({ width: 1024, withoutEnlargement: true })
           .webp({ quality: 80 })
-          .toFile(outputPath);
+          .toBuffer();
 
-        let baseUrl = `${req.protocol}://${req.get("host")}`;
-        if (process.env.NODE_ENV === "development") {
-          baseUrl = "http://localhost:3000";
-        }
+        await uploadToS3(optimizedBuffer, key, "image/webp");
 
         return {
-          url: `${baseUrl}/images/${filename}`,
+          url: key, // Guardamos la Key
           alt: `Foto Adicional ${photos.length + index + 1}`,
         };
       });
@@ -428,11 +428,20 @@ const verifyInspectionController = async (req, res) => {
       }
     });
 
+    // Transformar Keys de la inspección de DB
+    const dbInsObj = dbInspection.toObject();
+    dbInsObj.photos = await Promise.all(
+      dbInsObj.photos.map(async (p) => ({
+        ...p,
+        url: getProxyUrl(req, p.url),
+      })),
+    );
+
     return res.status(200).json({
       success: true,
       data: {
         dbInspection: {
-          ...dbInspection.toObject(),
+          ...dbInsObj,
           _calculatedRating: dbRating,
         },
         newInspectionData: {
@@ -529,11 +538,20 @@ const confirmInspectionController = async (req, res) => {
 
     await vehicle.save();
 
+    // Transformar Keys para la respuesta
+    const inspectionObj = inspection.toObject();
+    inspectionObj.photos = await Promise.all(
+      inspectionObj.photos.map(async (p) => ({
+        ...p,
+        url: getProxyUrl(req, p.url),
+      })),
+    );
+
     return res.status(200).json({
       success: true,
       message: "Inspección confirmada exitosamente.",
       data: {
-        inspection,
+        inspection: inspectionObj,
         vehicle,
       },
     });
@@ -577,9 +595,23 @@ const getInspectionsByTypeController = async (req, res) => {
       .populate("vehicleId", "plate brand model year") // Populate basic vehicle info
       .sort({ createdAt: -1 });
 
+    // Transformar Keys en Proxy URLs
+    const enrichedInspections = await Promise.all(
+      inspections.map(async (ins) => {
+        const insObj = ins.toObject();
+        insObj.photos = await Promise.all(
+          insObj.photos.map(async (p) => ({
+            ...p,
+            url: getProxyUrl(req, p.url),
+          })),
+        );
+        return insObj;
+      }),
+    );
+
     return res.status(200).json({
       success: true,
-      data: inspections,
+      data: enrichedInspections,
     });
   } catch (error) {
     console.error("Error en getInspectionsByTypeController:", error);
@@ -631,9 +663,20 @@ const getInspectionByPlateController = async (req, res) => {
       });
     }
 
+    // Transformar Keys en Proxy URLs
+    const photosWithUrls = await Promise.all(
+      inspection.photos.map(async (photo) => ({
+        ...photo.toObject(),
+        url: getProxyUrl(req, photo.url),
+      })),
+    );
+
+    const inspectionData = inspection.toObject();
+    inspectionData.photos = photosWithUrls;
+
     return res.status(200).json({
       success: true,
-      data: inspection,
+      data: inspectionData,
     });
   } catch (error) {
     console.error("Error en getInspectionByPlateController:", error);
@@ -761,10 +804,19 @@ const updateInspectionStatusController = async (req, res) => {
       }
     }
 
+    // Transformar Keys para la respuesta
+    const inspectionObj = inspection.toObject();
+    inspectionObj.photos = await Promise.all(
+      inspectionObj.photos.map(async (p) => ({
+        ...p,
+        url: getProxyUrl(req, p.url),
+      })),
+    );
+
     return res.status(200).json({
       success: true,
       message: "Estado de inspección actualizado correctamente.",
-      data: inspection,
+      data: inspectionObj,
     });
   } catch (error) {
     console.error("Error en updateInspectionStatusController:", error);
@@ -798,9 +850,23 @@ const getInspectionsByFilterController = async (req, res) => {
       .populate("vehicleId", "plate brand model year")
       .sort({ createdAt: -1 });
 
+    // Transformar Keys en Proxy URLs para todas las inspecciones
+    const enrichedInspections = await Promise.all(
+      inspections.map(async (ins) => {
+        const insObj = ins.toObject();
+        insObj.photos = await Promise.all(
+          insObj.photos.map(async (p) => ({
+            ...p,
+            url: getProxyUrl(req, p.url),
+          })),
+        );
+        return insObj;
+      }),
+    );
+
     return res.status(200).json({
       success: true,
-      data: inspections,
+      data: enrichedInspections,
     });
   } catch (error) {
     console.error("Error en getInspectionsByFilterController:", error);
@@ -1323,25 +1389,17 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
       }
     }
 
-    // Guardar las imágenes procesadas en public/images/ como hace la creación de peritaje
-    const uploadDir = path.join(__dirname, "..", "public", "images");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
-    let baseUrl = `${req.protocol}://${req.get("host")}`;
-    if (process.env.NODE_ENV === "development") {
-      baseUrl = "http://localhost:3000";
-    }
-
     const uploadPromises = photos.map(async (file, index) => {
-      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
-      const outputPath = path.join(uploadDir, filename);
+      const key = `perito/temp/${Date.now()}-${Math.round(Math.random() * 1e9)}.webp`;
 
-      await sharp(file.path)
+      // Optimizamos con sharp y obtenemos buffer
+      const optimizedBuffer = await sharp(file.path)
         .resize({ width: 1024, withoutEnlargement: true })
         .webp({ quality: 80 })
-        .toFile(outputPath);
+        .toBuffer();
+
+      // Subimos a S3 inmediatamente
+      await uploadToS3(optimizedBuffer, key, "image/webp");
 
       // Usar el alt descriptivo generado por la IA si existe
       const aiAlt =
@@ -1352,12 +1410,13 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
           : `Foto ${index + 1}`;
 
       return {
-        url: `${baseUrl}/images/${filename}`,
+        url: key, // Retornamos la Key para que el siguiente paso la use
+        tempUrl: getProxyUrl(req, key), // URL del proxy para previsualización inmediata
         alt: aiAlt,
       };
     });
 
-    // Reemplazar el array vacío de fotos que mandó la IA por las URLs definitivas que persistiremos
+    // Reemplazar el array de fotos con los datos de S3
     structuredData.photos = await Promise.all(uploadPromises);
 
     // Construir la respuesta final de la API
@@ -1405,6 +1464,24 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
   }
 };
 
+const proxyImageController = async (req, res) => {
+  try {
+    const { key } = req.query;
+    if (!key) return res.status(400).send("Key is required");
+
+    const stream = await getObjectStream(key);
+
+    // Set content type if possible, or default to image/webp
+    res.setHeader("Content-Type", "image/webp");
+    res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+    stream.pipe(res);
+  } catch (error) {
+    console.error("Error in proxyImageController:", error);
+    res.status(500).send("Error fetching image");
+  }
+};
+
 module.exports = {
   createInspectionController,
   verifyInspectionController,
@@ -1416,4 +1493,5 @@ module.exports = {
   getReinspectionsByFilterController,
   updateReinspectionStateController,
   analyzePhotosController,
+  proxyImageController,
 };

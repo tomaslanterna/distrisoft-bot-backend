@@ -17,6 +17,7 @@ const authRoutes = require("./routes/auth.routes");
 const bookingRoutes = require("./routes/booking.routes");
 const inspectionRoutes = require("./routes/inspection.routes");
 const vehicleRoutes = require("./routes/vehicle.routes");
+const mediaRoutes = require("./routes/media.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use("/distributor", distributorRoutes);
 app.use("/notify", notifyRoutes);
 app.use("/auth", authRoutes);
 app.use("/booking", bookingRoutes);
+app.use("/media", mediaRoutes);
 app.use("/inspection", authMiddleware, inspectionRoutes);
 app.use("/vehicle", authMiddleware, vehicleRoutes);
 
