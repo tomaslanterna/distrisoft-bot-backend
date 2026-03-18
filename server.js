@@ -18,6 +18,7 @@ const bookingRoutes = require("./routes/booking.routes");
 const inspectionRoutes = require("./routes/inspection.routes");
 const vehicleRoutes = require("./routes/vehicle.routes");
 const mediaRoutes = require("./routes/media.routes");
+const searchRoutes = require("./routes/search.routes");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +50,7 @@ app.use("/booking", bookingRoutes);
 app.use("/media", mediaRoutes);
 app.use("/inspection", authMiddleware, inspectionRoutes);
 app.use("/vehicle", authMiddleware, vehicleRoutes);
+app.use("/search", authMiddleware, searchRoutes);
 
 // Servir archivos estáticos de la carpeta public/images (imágenes, etc.)
 app.use("/images", express.static(path.join(__dirname, "public/images")));
