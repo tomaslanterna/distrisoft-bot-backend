@@ -67,6 +67,9 @@ const InspectionSchema = new Schema(
     },
     checklistRating: { type: Number, default: 0 },
     overallRating: { type: Number, default: 0 },
+    totalValue: { type: Number },
+    costOfAcquisition: { type: Number },
+    successPercentage: { type: Number },
     vehicleState: [VehicleStateSchema],
     vehicleComponents: [VehicleComponentSchema],
     photos: [PhotoSchema], // Ahora usa el esquema con URL y Alt

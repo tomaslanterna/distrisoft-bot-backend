@@ -241,6 +241,9 @@ const createInspectionController = async (req, res) => {
       overallRating: overallRating,
       vehicleState: vehicleState,
       vehicleComponents: vehicleComponents,
+      totalValue: ObjectData.totalValue ?? 0,
+      costOfAcquisition: ObjectData.costOfAcquisition ?? 0,
+      successPercentage: ObjectData.successPercentage ?? 0,
       photos: photos,
     });
 
@@ -524,6 +527,12 @@ const confirmInspectionController = async (req, res) => {
     inspection.inspectionType = "SUCCESSFULLY_INSPECTION";
     inspection.checklistRating = checklistRating;
     inspection.overallRating = overallRating;
+    if (inspectionData.totalValue !== undefined)
+      inspection.totalValue = inspectionData.totalValue;
+    if (inspectionData.costOfAcquisition !== undefined)
+      inspection.costOfAcquisition = inspectionData.costOfAcquisition;
+    if (inspectionData.successPercentage !== undefined)
+      inspection.successPercentage = inspectionData.successPercentage;
 
     await inspection.save();
 
@@ -1215,9 +1224,9 @@ INSTRUCCIONES DE ANÁLISIS POR CAPAS:
 
 - CAPA 1: Identificación Definitiva (Documentación)
 
-* Prioridad Máxima: Si detectas fotos de "Libreta de Propiedad", "Título" o "Cédula", extrae de ahí: plate (matrícula), brand, model, year y vin. Estos datos invalidan cualquier inferencia visual externa.
+* Prioridad Máxima: Si detectas fotos de "Libreta de Propiedad", "Título" o "Cédula", extrae de ahí: plate (matrícula), brand, model, year, tipo de combustible y vin. Estos datos invalidan cualquier inferencia visual externa.
 
-* Ubicación de Datos: En los documentos, busca los valores que se encuentran inmediatamente al lado o debajo de etiquetas como: "Matrícula", "Nro. de Chasis", "Año/Modelo", "Marca".
+* Ubicación de Datos: En los documentos, busca los valores que se encuentran inmediatamente al lado o debajo de etiquetas como: "Matrícula", "Nro. de Chasis", "Año/Modelo", "Marca", "Comb".
 
 * VIN (Chasis): Es opcional. Si no es 100% legible, devuelve "".
 
@@ -1255,9 +1264,11 @@ INSTRUCCIONES DE ANÁLISIS POR CAPAS:
 
 * Conclusión sobre si es una unidad recomendada o si requiere inversión inmediata.
 
-* Busca el valor actual en portales líderes (ej. Mercado Libre) según el país. Ajusta el totalValue según el estado general y kilometraje.
+* Busca el valor actual en portales líderes (ej. Mercado Libre) según el país. Ajusta el totalValue según modelo, combustible,año y kilometraje.
 
-*Busca el % de venta que puede tener el vehiculo. Este porcentaje se calcula en base a la cantidad de ventas que tiene el vehiculo en el mercado teniendo en cuenta su precio, estado (para su estado usa unicamente los valores visuales que obtenes como chapa, pintura, cubiertas y kilometraje) y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
+*Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
+
+*Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado uruguayo. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
 
 ESTRUCTURA DE RESPUESTA (JSON ESTRICTO):
 
@@ -1274,9 +1285,11 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
 "model": "Modelo",
 "plate": "Matrícula",
 "vin": "Nro. de Chasis",
+"fuel" : "Comb",
 "year": "Año"
 },
 "totalValue": 0,
+"costOfAcquisition": 0,
 "successPercentage": 0,
 "vehicleState": [
 { "name": "pintura", "rating": 0 },
