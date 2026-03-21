@@ -136,11 +136,46 @@ const getVehiclesByStatusController = async (req, res) => {
     // Sort descending by creation
     pipeline.push({ $sort: { createdAt: -1 } });
 
+    const getProxyUrl = (req, key) => {
+      if (!key) return null;
+      if (key.startsWith("http")) return key;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      return `${baseUrl}/media/image?key=${encodeURIComponent(key)}`;
+    };
+
     const vehicles = await Vehicle.aggregate(pipeline);
+
+    const enrichedVehicles = vehicles.map((vehicle) => {
+      if (vehicle.inspections && vehicle.inspections.length > 0) {
+        vehicle.inspections = vehicle.inspections.map((ins) => {
+          if (ins.photos && ins.photos.length > 0) {
+            ins.photos = ins.photos.map((p) => ({
+              ...p,
+              url: getProxyUrl(req, p.url),
+            }));
+          }
+          return ins;
+        });
+      }
+
+      if (vehicle.reinspections && vehicle.reinspections.length > 0) {
+        vehicle.reinspections = vehicle.reinspections.map((reins) => {
+          if (reins.photos && reins.photos.length > 0) {
+            reins.photos = reins.photos.map((p) => ({
+              ...p,
+              url: getProxyUrl(req, p.url),
+            }));
+          }
+          return reins;
+        });
+      }
+
+      return vehicle;
+    });
 
     return res.status(200).json({
       success: true,
-      data: vehicles,
+      data: enrichedVehicles,
     });
   } catch (error) {
     console.error("Error en getVehiclesByStatusController:", error);
@@ -226,11 +261,46 @@ const getVehiclesByFilterController = async (req, res) => {
       { $sort: { createdAt: -1 } },
     ];
 
+    const getProxyUrl = (req, key) => {
+      if (!key) return null;
+      if (key.startsWith("http")) return key;
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      return `${baseUrl}/media/image?key=${encodeURIComponent(key)}`;
+    };
+
     const vehicles = await Vehicle.aggregate(pipeline);
+
+    const enrichedVehicles = vehicles.map((vehicle) => {
+      if (vehicle.inspections && vehicle.inspections.length > 0) {
+        vehicle.inspections = vehicle.inspections.map((ins) => {
+          if (ins.photos && ins.photos.length > 0) {
+            ins.photos = ins.photos.map((p) => ({
+              ...p,
+              url: getProxyUrl(req, p.url),
+            }));
+          }
+          return ins;
+        });
+      }
+
+      if (vehicle.reinspections && vehicle.reinspections.length > 0) {
+        vehicle.reinspections = vehicle.reinspections.map((reins) => {
+          if (reins.photos && reins.photos.length > 0) {
+            reins.photos = reins.photos.map((p) => ({
+              ...p,
+              url: getProxyUrl(req, p.url),
+            }));
+          }
+          return reins;
+        });
+      }
+
+      return vehicle;
+    });
 
     return res.status(200).json({
       success: true,
-      data: vehicles,
+      data: enrichedVehicles,
     });
   } catch (error) {
     console.error("Error en getVehiclesByFilterController:", error);
