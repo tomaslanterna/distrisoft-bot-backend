@@ -1098,99 +1098,9 @@ const analyzePhotosController = async (req, res) => {
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {
-        responseMimeType: "application/json", // Esto obliga a la IA a devolver un JSON válido
+        responseMimeType: "application/json",
       },
     });
-
-    // Preparar el System Prompt
-    //     const systemPrompt = `Eres un "Analizador Inteligente de Peritajes" de vehículos.
-    // Analizarás un conjunto de imágenes (y opcionalmente un audio del motor) proporcionados por el usuario para extraer información estructurada que servirá de borrador para una inspección.
-
-    // **INSTRUCCIONES DE ANÁLISIS:**
-    // 1. **Análisis de Documentación:** Busca la placa (patente), marca y modelo del vehículo.
-    // *Nota crucial:* Si entre las fotos detectas la foto de la libreta de propiedad, título y/o documento de identidad del vehículo, **DEBES usar ESA foto como la fuente principal y definitiva** para extraer la placa, marca, modelo y VIN, descartando otras inferencias del exterior del vehículo si hubiera discrepancias.
-    // *Nota para documentos:* En la libreta, el dato que buscas siempre se encuentra al lado de un label identificador. Debes buscar específicamente en el texto frases como "Matrícula", "Año", o "Nro Chasis" para identificar a qué campo corresponde el valor que le sigue.
-    // *Nota importante:* El número de chasis (VIN) es opcional. Si se detecta, extráelo; si no es visible o legible, déjalo como un string vacío "" sin marcar error.
-    // 2. **Análisis de Odómetro:** Extrae el kilometraje numérico exacto visible en el tablero. Si es digital, valida los dígitos; si es analógico, estima con precisión.
-    // 3. **Valoración de Estado (vehicleState):** Evalúa visualmente (y mediante el audio para el motor, si está presente) y asigna un "rating" (entero del 0 al 5, donde 5 es perfecto y 0 es en pésimo estado) estrictamente a estas partes (usa exactamente estos nombres en el atributo 'name'):
-    // - pintura, chapa, cubiertas, parabrisas, tapizado, motor, embrage, caja, trenDelantero, trenTrasero, amortiguadores, frenos, frenoMano, lucesTablero, bateria.
-    // *IMPORTANTE PARA INTERIOR Y EXTERIOR:* Ten en cuenta el nivel de limpieza general del vehículo. Que un auto esté sucio (barro, polvo) o su interior esté manchado NO significa necesariamente que esté en mal estado (como chapa oxidada, pintura descascarada o plásticos rotos). Diferencia entre suciedad y daño estructural o de desgaste. Enfócate exclusivamente en valorar los desgastes permanentes, rayones, roturas y qué componentes estructurales tiene.
-    // *IMPORTANTE PARA TABLERO:* Al examinar el tablero, ten en cuenta que encendidas luces de color amarillo no siempre indican errores graves o mal estado del motor. Por ejemplo, la luz de reserva de combustible es un aviso informativo. Debes identificar íconos universales de automóviles apoyándote de internet si es necesario para categorizar correctamente si es un error grave o no y valorar en base a eso.
-    // *IMPORTANTE:* Para los componentes que NO puedas percibir, ver o evaluar claramente en las fotos proporcionadas (porque no hay ángulo, foto faltante, etc), asígnales estrictamente el valor de rating \`0\`.
-    // ${audios.length === 0 ? "*IMPORTANTE: Como NO se adjuntó archivo de audio, el sonido no pudo ser evaluado. Debes obligatoriamente dejar el valor de 'rating' como `null` para: 'motor', 'embrage' y 'caja', de modo que los recuadros queden vacíos para revisión manual.*" : "*IMPORTANTE: Se ha adjuntado un archivo de audio. Escúchalo determinadamente para evaluar ruidos anormales del 'motor', 'embrage' y 'caja', asignándoles su respectivo 'rating'.*"}
-    // 4. **Checklist de Componentes (vehicleComponents):** Identifica la presencia de estrictamente estos componentes (usa exactamente estos nombres en el atributo 'name'):
-    // - aa, da, airbags, radio, vidriosElectricos, techoPanoramico, alfombras, alarma, bloqueo, llave1, llave2, control1, control2, llantas, tazas, estribos, barraAntiVuelco, barrasTecho, defensa, enganche, traccion4x4, lonaMaritima, cubreCaja, auxiliar, llave, gato, computest.
-    // *Importante:* Usa el ENUM para 'state': 0 (No tiene/No detectado), 1 (Tiene y está OK), 2 (Tiene pero Dudoso/Requiere revisión manual).
-    // 5. **Generación de Alt Text:** Para cada imagen, crea una descripción técnica corta en español (ej: "Foto de perfil lateral derecho con rayón leve en puerta trasera").
-    // 6. **Valoración de Mercado:** Busca en internet el valor aproximado de venta del vehículo en la actualidad (teniendo en cuenta la marca, modelo, año estimado, estado general del vehículo y kilometros) y retórnalo estrictamente como un número en la propiedad "totalValue", puedes apoyarte para estos valores buscando en mercado libre por ejemplo. Si no puedes encontrar un precio exacto, haz tu mejor estimación numérica.
-
-    // **ESTRUCTURA DE RESPUESTA REQUERIDA:**
-    // Debes devolver **EXCLUSIVAMENTE** un string en formato JSON válido que coincida exactamente con la siguiente estructura. No incluyas bloques de código markdown, ni saludos, ni ningún otro texto fuera del JSON.
-
-    // {
-    //   "metadata": {
-    //     "mileage": Number,
-    //     "location": String o null,
-    //     "notes": "Informe preliminar generado por IA basado en el análisis de las fotos y audio."
-    //   },
-    //   "vehicle": {
-    //     "brand": String,
-    //     "model": String,
-    //     "plate": String,
-    //     "vin": String || ""
-    //   },
-    //   "totalValue": Number,
-    //   "vehicleState": [
-    //     { "name": "pintura", "rating": Number },
-    //     { "name": "chapa", "rating": Number },
-    //     { "name": "cubiertas", "rating": Number },
-    //     { "name": "parabrisas", "rating": Number },
-    //     { "name": "tapizado", "rating": Number },
-    //     { "name": "motor", "rating": "Number o null" },
-    //     { "name": "embrage", "rating": "Number o null" },
-    //     { "name": "caja", "rating": "Number o null" },
-    //     { "name": "trenDelantero", "rating": Number },
-    //     { "name": "trenTrasero", "rating": Number },
-    //     { "name": "amortiguadores", "rating": Number },
-    //     { "name": "frenos", "rating": Number },
-    //     { "name": "frenoMano", "rating": Number },
-    //     { "name": "lucesTablero", "rating": Number },
-    //     { "name": "bateria", "rating": Number }
-    //   ],
-    //   "vehicleComponents": [
-    //     { "name": "aa", "state": Number },
-    //     { "name": "da", "state": Number },
-    //     { "name": "airbags", "state": Number },
-    //     { "name": "radio", "state": Number },
-    //     { "name": "vidriosElectricos", "state": Number },
-    //     { "name": "techoPanoramico", "state": Number },
-    //     { "name": "alfombras", "state": Number },
-    //     { "name": "alarma", "state": Number },
-    //     { "name": "bloqueo", "state": Number },
-    //     { "name": "llave1", "state": Number },
-    //     { "name": "llave2", "state": Number },
-    //     { "name": "control1", "state": Number },
-    //     { "name": "control2", "state": Number },
-    //     { "name": "llantas", "state": Number },
-    //     { "name": "tazas", "state": Number },
-    //     { "name": "estribos", "state": Number },
-    //     { "name": "barraAntiVuelco", "state": Number },
-    //     { "name": "barrasTecho", "state": Number },
-    //     { "name": "defensa", "state": Number },
-    //     { "name": "enganche", "state": Number },
-    //     { "name": "traccion4x4", "state": Number },
-    //     { "name": "lonaMaritima", "state": Number },
-    //     { "name": "cubreCaja", "state": Number },
-    //     { "name": "auxiliar", "state": Number },
-    //     { "name": "llave", "state": Number },
-    //     { "name": "gato", "state": Number },
-    //     { "name": "computest", "state": Number }
-    //   ],
-    //   "photos": [
-    //     { "url": "", "alt": "Descripción corta generada para la foto 1" },
-    //     { "url": "", "alt": "Descripción corta generada para la foto 2" }
-    //   ]
-    // }`;
 
     const systemPrompt = `
 Eres el "Analizador Inteligente de Peritajes" de nivel experto. Tu misión es transformar imágenes y audio en un informe técnico de alta precisión.
@@ -1238,11 +1148,13 @@ INSTRUCCIONES DE ANÁLISIS POR CAPAS:
 
 - CAPA 3: Valoración de Estado (vehicleState)
 
+REGLA ESTRICTA DE AUDIO: 
+
+*Los audios proporcionados contienen exclusivamente ruidos mecánicos de motor. Si escuchas voces humanas, música o ruidos de fondo, IGNÓRALOS COMPLETAMENTE. NO intentes transcribir conversaciones y BAJO NINGUNA CIRCUNSTANCIA agregues campos no solicitados como "text", "language" u otras observaciones fuera de la estructura JSON definida.
+
 * Asigna un entero del 0 al 5.
 
 * Lógica de Audio: - Si ${audios.length === 0}: motor, embrage y caja DEBEN ser 0.
-
-* Si hay audio: Analiza ruidos metálicos o irregularidades para calificar.
 
 * Rating 0: Úsalo si la parte no es visible o si no hay audio para los componentes mecánicos.
 
@@ -1266,13 +1178,18 @@ INSTRUCCIONES DE ANÁLISIS POR CAPAS:
 
 * Busca el valor actual en portales líderes (ej. Mercado Libre) según el país. Ajusta el totalValue según modelo, combustible,año y kilometraje.
 
-*Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
+* Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
 
-*Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado uruguayo. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
+* Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado uruguayo. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
 
-ESTRUCTURA DE RESPUESTA (JSON ESTRICTO):
+* Especifica si el audio contiene ruidos de motor, embrague o caja. Si hay un audio que NO es de un motor, pon "En el audio no se detectaron ruidos de motor, embrague o caja."
 
-Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
+INSTRUCCIONES DE FORMATO:
+    - Tu respuesta debe ser ÚNICAMENTE un objeto JSON.
+    - No incluyas texto antes ni después del objeto JSON.
+    - No uses bloques de código markdown (como \`\`\`json).
+    
+ESTRUCTURA REQUERIDA:
 
 {
 "metadata": {
@@ -1359,7 +1276,7 @@ Devuelve EXCLUSIVAMENTE el JSON. Sin explicaciones adicionales.
     }
 
     // Procesar Audio (si existe)
-    if (audios.length > 0) {
+    if (audios && audios.length > 0) {
       const audioFile = audios[0];
       const audioData = fs.readFileSync(audioFile.path);
       geminiParts.push({
