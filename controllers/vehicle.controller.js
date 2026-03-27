@@ -1,4 +1,5 @@
 const { Vehicle } = require("../models/Vehicle");
+const User = require("../models/User");
 const mongoose = require("mongoose");
 
 const updateVehicleStatusController = async (req, res) => {
@@ -145,9 +146,18 @@ const getVehiclesByStatusController = async (req, res) => {
 
     const vehicles = await Vehicle.aggregate(pipeline);
 
+    // Populate inspectorId with username
+    await User.populate(vehicles, {
+      path: "inspections.inspectorId reinspections.inspectorId",
+      select: "username",
+    });
+
     const enrichedVehicles = vehicles.map((vehicle) => {
       if (vehicle.inspections && vehicle.inspections.length > 0) {
         vehicle.inspections = vehicle.inspections.map((ins) => {
+          ins.userName = ins.inspectorId?.username || "Unknown";
+          ins.inspectorId = ins.inspectorId?._id || ins.inspectorId;
+
           if (ins.photos && ins.photos.length > 0) {
             ins.photos = ins.photos.map((p) => ({
               ...p,
@@ -160,6 +170,9 @@ const getVehiclesByStatusController = async (req, res) => {
 
       if (vehicle.reinspections && vehicle.reinspections.length > 0) {
         vehicle.reinspections = vehicle.reinspections.map((reins) => {
+          reins.userName = reins.inspectorId?.username || "Unknown";
+          reins.inspectorId = reins.inspectorId?._id || reins.inspectorId;
+
           if (reins.photos && reins.photos.length > 0) {
             reins.photos = reins.photos.map((p) => ({
               ...p,
@@ -270,9 +283,18 @@ const getVehiclesByFilterController = async (req, res) => {
 
     const vehicles = await Vehicle.aggregate(pipeline);
 
+    // Populate inspectorId with username
+    await User.populate(vehicles, {
+      path: "inspections.inspectorId reinspections.inspectorId",
+      select: "username",
+    });
+
     const enrichedVehicles = vehicles.map((vehicle) => {
       if (vehicle.inspections && vehicle.inspections.length > 0) {
         vehicle.inspections = vehicle.inspections.map((ins) => {
+          ins.userName = ins.inspectorId?.username || "Unknown";
+          ins.inspectorId = ins.inspectorId?._id || ins.inspectorId;
+
           if (ins.photos && ins.photos.length > 0) {
             ins.photos = ins.photos.map((p) => ({
               ...p,
@@ -285,6 +307,9 @@ const getVehiclesByFilterController = async (req, res) => {
 
       if (vehicle.reinspections && vehicle.reinspections.length > 0) {
         vehicle.reinspections = vehicle.reinspections.map((reins) => {
+          reins.userName = reins.inspectorId?.username || "Unknown";
+          reins.inspectorId = reins.inspectorId?._id || reins.inspectorId;
+
           if (reins.photos && reins.photos.length > 0) {
             reins.photos = reins.photos.map((p) => ({
               ...p,

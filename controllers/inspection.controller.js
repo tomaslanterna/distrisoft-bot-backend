@@ -232,6 +232,7 @@ const createInspectionController = async (req, res) => {
       vehicleId: vehicle._id,
       inspectorId: inspectorId,
       inspectionType: "INSPECTION",
+      isIAGenerated: ObjectData.isIAGenerated || false,
       metadata: {
         mileage: parseInt(ObjectData.kilometros, 10),
         notes: ObjectData.observaciones,
@@ -601,26 +602,33 @@ const getInspectionsByTypeController = async (req, res) => {
       inspectionType: { $in: typesArray },
       businessId: businessId,
     })
-      .populate("vehicleId", "plate brand model year") // Populate basic vehicle info
+      .populate("vehicleId", "plate brand model year")
+      .populate("inspectorId", "username")
       .sort({ createdAt: -1 });
 
-    // Transformar Keys en Proxy URLs
-    const enrichedInspections = await Promise.all(
-      inspections.map(async (ins) => {
-        const insObj = ins.toObject();
-        insObj.photos = await Promise.all(
-          insObj.photos.map(async (p) => ({
-            ...p,
-            url: getProxyUrl(req, p.url),
-          })),
-        );
-        return insObj;
+    // Transformar Keys en Proxy URLs y agregar userName
+    const enrichedData = await Promise.all(
+      inspections.map(async (item) => {
+        const itemObj = item.toObject();
+        // Populate userName from inspectorId
+        itemObj.userName = item.inspectorId?.username || "Unknown";
+        itemObj.inspectorId = item.inspectorId?._id || item.inspectorId;
+
+        if (itemObj.photos && Array.isArray(itemObj.photos)) {
+          itemObj.photos = await Promise.all(
+            itemObj.photos.map(async (p) => ({
+              ...p,
+              url: getProxyUrl(req, p.url),
+            })),
+          );
+        }
+        return itemObj;
       }),
     );
 
     return res.status(200).json({
       success: true,
-      data: enrichedInspections,
+      data: enrichedData,
     });
   } catch (error) {
     console.error("Error en getInspectionsByTypeController:", error);
@@ -663,6 +671,7 @@ const getInspectionByPlateController = async (req, res) => {
       vehicleId: vehicle._id,
     })
       .populate("vehicleId", "plate brand model year")
+      .populate("inspectorId", "username")
       .sort({ createdAt: -1 });
 
     if (!inspection) {
@@ -681,6 +690,8 @@ const getInspectionByPlateController = async (req, res) => {
     );
 
     const inspectionData = inspection.toObject();
+    inspectionData.userName = inspection.inspectorId?.username || "Unknown";
+    inspectionData.inspectorId = inspection.inspectorId?._id || inspection.inspectorId;
     inspectionData.photos = photosWithUrls;
 
     return res.status(200).json({
@@ -857,12 +868,15 @@ const getInspectionsByFilterController = async (req, res) => {
 
     const inspections = await Inspection.find(query)
       .populate("vehicleId", "plate brand model year")
+      .populate("inspectorId", "username")
       .sort({ createdAt: -1 });
 
     // Transformar Keys en Proxy URLs para todas las inspecciones
     const enrichedInspections = await Promise.all(
       inspections.map(async (ins) => {
         const insObj = ins.toObject();
+        insObj.userName = ins.inspectorId?.username || "Unknown";
+        insObj.inspectorId = ins.inspectorId?._id || ins.inspectorId;
         insObj.photos = await Promise.all(
           insObj.photos.map(async (p) => ({
             ...p,
@@ -907,11 +921,19 @@ const getReinspectionsByFilterController = async (req, res) => {
 
     const reinspections = await Reinspection.find(query)
       .populate("vehicleId", "plate brand model year")
+      .populate("inspectorId", "username")
       .sort({ createdAt: -1 });
+
+    const enrichedReinspections = reinspections.map((re) => {
+      const reObj = re.toObject();
+      reObj.userName = re.inspectorId?.username || "Unknown";
+      reObj.inspectorId = re.inspectorId?._id || re.inspectorId;
+      return reObj;
+    });
 
     return res.status(200).json({
       success: true,
-      data: reinspections,
+      data: enrichedReinspections,
     });
   } catch (error) {
     console.error("Error en getReinspectionsByFilterController:", error);
@@ -1015,6 +1037,7 @@ const updateReinspectionStateController = async (req, res) => {
       }
       reinspection.history.push({
         userId: req.user ? req.user.id : null,
+        userName: req.user ? req.user.username : "Unknown",
         changedAt: new Date(),
         changes: changesMade.join(" | "),
       });

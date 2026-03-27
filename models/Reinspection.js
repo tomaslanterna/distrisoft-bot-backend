@@ -55,7 +55,7 @@ const ReInspectionSchema = new Schema(
       required: true,
       index: true,
     },
-    inspectorId: { type: Schema.Types.ObjectId, required: true },
+    inspectorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     inspectionType: {
       type: String,
       enum: [
@@ -78,6 +78,7 @@ const ReInspectionSchema = new Schema(
     history: [
       {
         userId: { type: Schema.Types.ObjectId, ref: "User" },
+        userName: { type: String },
         changedAt: { type: Date, default: Date.now },
         changes: { type: String, required: true },
         _id: false,

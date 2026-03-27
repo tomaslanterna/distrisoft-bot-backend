@@ -48,7 +48,7 @@ const InspectionSchema = new Schema(
       required: true,
       index: true,
     },
-    inspectorId: { type: Schema.Types.ObjectId, required: true },
+    inspectorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     inspectionType: {
       type: String,
       enum: [
@@ -59,6 +59,7 @@ const InspectionSchema = new Schema(
       ],
       required: true,
     },
+    isIAGenerated: { type: Boolean, default: false, required: false },
     metadata: {
       mileage: { type: Number, required: true },
       location: String,

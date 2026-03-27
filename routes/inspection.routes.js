@@ -33,6 +33,7 @@ router.post(
 );
 router.post("/verify/:id", verifyInspectionController);
 router.post("/confirm/:id", confirmInspectionController);
+
 router.get("/type/:type", getInspectionsByTypeController);
 router.get("/plate/:plate", getInspectionByPlateController);
 // User requested separate endpoints status update
