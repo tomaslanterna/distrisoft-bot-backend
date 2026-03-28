@@ -813,7 +813,7 @@ const updateInspectionStatusController = async (req, res) => {
         overallRating: overallRating,
         vehicleState: vehicleState,
         vehicleComponents: vehicleComponents,
-        costOfAcquisition: inspectionData.costOfAcquisition,
+        costOfAcquisition: inspectionData?.costOfAcquisition,
       });
 
       // Update vehicle rating as well?
