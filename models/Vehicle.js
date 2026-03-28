@@ -79,6 +79,7 @@ const VehicleSchema = new Schema(
         cost: { type: Number },
       },
     ],
+    finalValue: { type: Number },
     metadata: {
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },

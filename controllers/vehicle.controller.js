@@ -5,7 +5,7 @@ const mongoose = require("mongoose");
 const updateVehicleStatusController = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, finalValue } = req.body;
 
     const allowedStatuses = [
       "PENDING_REVIEW",
@@ -28,6 +28,13 @@ const updateVehicleStatusController = async (req, res) => {
       });
     }
 
+    if (!finalValue) {
+      return res.status(400).json({
+        success: false,
+        message: `finalValue es requerido.`,
+      });
+    }
+
     const vehicle = await Vehicle.findById(id);
     if (!vehicle) {
       return res.status(404).json({
@@ -40,6 +47,7 @@ const updateVehicleStatusController = async (req, res) => {
     // if (vehicle.businessId.toString() !== req.user.distributor) ...
 
     vehicle.status = status;
+    vehicle.finalValue = finalValue;
     await vehicle.save();
 
     return res.status(200).json({

@@ -71,6 +71,7 @@ const ReInspectionSchema = new Schema(
       externalTemp: String,
       notes: String,
     },
+    costOfAcquisition: { type: Number },
     checklistRating: { type: Number, default: 0 },
     overallRating: { type: Number, default: 0 },
     vehicleState: [VehicleStateSchema],

@@ -691,7 +691,8 @@ const getInspectionByPlateController = async (req, res) => {
 
     const inspectionData = inspection.toObject();
     inspectionData.userName = inspection.inspectorId?.username || "Unknown";
-    inspectionData.inspectorId = inspection.inspectorId?._id || inspection.inspectorId;
+    inspectionData.inspectorId =
+      inspection.inspectorId?._id || inspection.inspectorId;
     inspectionData.photos = photosWithUrls;
 
     return res.status(200).json({
@@ -812,6 +813,7 @@ const updateInspectionStatusController = async (req, res) => {
         overallRating: overallRating,
         vehicleState: vehicleState,
         vehicleComponents: vehicleComponents,
+        costOfAcquisition: inspectionData.costOfAcquisition,
       });
 
       // Update vehicle rating as well?
