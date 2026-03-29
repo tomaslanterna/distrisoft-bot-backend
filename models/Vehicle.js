@@ -80,6 +80,7 @@ const VehicleSchema = new Schema(
       },
     ],
     finalValue: { type: Number },
+    rentabilityValue: { type: Number },
     metadata: {
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },

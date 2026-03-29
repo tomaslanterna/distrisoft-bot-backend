@@ -1,4 +1,5 @@
 const { Vehicle } = require("../models/Vehicle");
+const { Reinspection } = require("../models/Reinspection");
 const User = require("../models/User");
 const mongoose = require("mongoose");
 
@@ -48,6 +49,16 @@ const updateVehicleStatusController = async (req, res) => {
 
     vehicle.status = status;
     vehicle.finalValue = finalValue;
+
+    if (status === "SUCCESSFULLY_SELLED") {
+      const lastReinspection = await Reinspection.findOne({ vehicleId: vehicle._id }).sort({ createdAt: -1 });
+      const costOfAcqui = lastReinspection?.costOfAcquisition || 0;
+      const billsSumPesos = vehicle.vehicleBills?.reduce((sum, bill) => sum + (bill.cost || 0), 0) || 0;
+      const billsSumDollars = billsSumPesos / 40;
+      
+      vehicle.rentabilityValue = vehicle.finalValue - costOfAcqui - billsSumDollars;
+    }
+
     await vehicle.save();
 
     return res.status(200).json({
