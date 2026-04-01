@@ -7,6 +7,7 @@ const updateVehicleStatusController = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, finalValue } = req.body;
+    let totalValue = 0;
 
     const allowedStatuses = [
       "PENDING_REVIEW",
@@ -29,14 +30,8 @@ const updateVehicleStatusController = async (req, res) => {
       });
     }
 
-    if (!finalValue) {
-      return res.status(400).json({
-        success: false,
-        message: `finalValue es requerido.`,
-      });
-    }
-
     const vehicle = await Vehicle.findById(id);
+
     if (!vehicle) {
       return res.status(404).json({
         success: false,
@@ -44,19 +39,26 @@ const updateVehicleStatusController = async (req, res) => {
       });
     }
 
-    // Optional: Add Ownership Check here if strictly needed
-    // if (vehicle.businessId.toString() !== req.user.distributor) ...
+    if (!finalValue) {
+      totalValue = finalValue;
+    }
 
     vehicle.status = status;
-    vehicle.finalValue = finalValue;
+    vehicle.finalValue = totalValue;
 
     if (status === "SUCCESSFULLY_SELLED") {
-      const lastReinspection = await Reinspection.findOne({ vehicleId: vehicle._id }).sort({ createdAt: -1 });
+      const lastReinspection = await Reinspection.findOne({
+        vehicleId: vehicle._id,
+      }).sort({ createdAt: -1 });
       const costOfAcqui = lastReinspection?.costOfAcquisition || 0;
-      const billsSumPesos = vehicle.vehicleBills?.reduce((sum, bill) => sum + (bill.cost || 0), 0) || 0;
+      const billsSumPesos =
+        vehicle.vehicleBills?.reduce(
+          (sum, bill) => sum + (bill.cost || 0),
+          0,
+        ) || 0;
       const billsSumDollars = billsSumPesos / 40;
-      
-      vehicle.rentabilityValue = vehicle.finalValue - costOfAcqui - billsSumDollars;
+
+      vehicle.rentabilityValue = totalValue - costOfAcqui - billsSumDollars;
     }
 
     await vehicle.save();
