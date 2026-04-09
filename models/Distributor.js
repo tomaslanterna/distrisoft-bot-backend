@@ -39,6 +39,11 @@ const distributorSchema = new mongoose.Schema({
       name: { type: String, required: false },
     },
   ],
+  country: {
+    id: { type: Number, required: false },
+    shortName: { type: String, required: false },
+    currency: { type: String, required: false },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

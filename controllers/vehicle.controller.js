@@ -2,6 +2,8 @@ const { Vehicle } = require("../models/Vehicle");
 const { Reinspection } = require("../models/Reinspection");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const { getCountryConfig } = require("../utils/countries.util");
+const { getDistributorShortName, formatCurrency } = require("../utils/currency.util");
 
 const updateVehicleStatusController = async (req, res) => {
   try {
@@ -46,6 +48,9 @@ const updateVehicleStatusController = async (req, res) => {
     vehicle.status = status;
     vehicle.finalValue = totalValue;
 
+    const currency = await getDistributorShortName(vehicle.businessId);
+    const countryConfig = getCountryConfig(currency);
+
     if (status === "SUCCESSFULLY_SELLED") {
       const lastReinspection = await Reinspection.findOne({
         vehicleId: vehicle._id,
@@ -56,17 +61,30 @@ const updateVehicleStatusController = async (req, res) => {
           (sum, bill) => sum + (bill.cost || 0),
           0,
         ) || 0;
-      const billsSumDollars = billsSumPesos / 40;
+      const billsSumDollars = billsSumPesos / (countryConfig.usdCotization || 40);
 
       vehicle.rentabilityValue = totalValue - costOfAcqui - billsSumDollars;
     }
 
     await vehicle.save();
 
+    const vehicleResponse = vehicle.toObject();
+    
+    if (currency) {
+      vehicleResponse.finalValue = formatCurrency(vehicleResponse.finalValue, "usd");
+      vehicleResponse.rentabilityValue = formatCurrency(vehicleResponse.rentabilityValue, "usd");
+      if (vehicleResponse.vehicleBills) {
+        vehicleResponse.vehicleBills = vehicleResponse.vehicleBills.map(bill => ({
+          ...bill,
+          cost: formatCurrency(bill.cost, currency)
+        }));
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Estado del vehículo actualizado correctamente.",
-      data: vehicle,
+      data: vehicleResponse,
     });
   } catch (error) {
     console.error("Error en updateVehicleStatusController:", error);
@@ -167,6 +185,8 @@ const getVehiclesByStatusController = async (req, res) => {
 
     const vehicles = await Vehicle.aggregate(pipeline);
 
+    const currency = await getDistributorShortName(businessId);
+
     // Populate inspectorId with username
     await User.populate(vehicles, {
       path: "inspections.inspectorId reinspections.inspectorId",
@@ -185,6 +205,10 @@ const getVehiclesByStatusController = async (req, res) => {
               url: getProxyUrl(req, p.url),
             }));
           }
+          if (currency) {
+            ins.totalValue = formatCurrency(ins.totalValue, "usd");
+            ins.costOfAcquisition = formatCurrency(ins.costOfAcquisition, "usd");
+          }
           return ins;
         });
       }
@@ -200,8 +224,23 @@ const getVehiclesByStatusController = async (req, res) => {
               url: getProxyUrl(req, p.url),
             }));
           }
+          if (currency) {
+            reins.totalValue = formatCurrency(reins.totalValue, "usd");
+            reins.costOfAcquisition = formatCurrency(reins.costOfAcquisition, "usd");
+          }
           return reins;
         });
+      }
+
+      if (currency) {
+        vehicle.finalValue = formatCurrency(vehicle.finalValue, "usd");
+        vehicle.rentabilityValue = formatCurrency(vehicle.rentabilityValue, "usd");
+        if (vehicle.vehicleBills) {
+          vehicle.vehicleBills = vehicle.vehicleBills.map(b => ({
+            ...b,
+            cost: formatCurrency(b.cost, currency)
+          }));
+        }
       }
 
       return vehicle;
@@ -304,6 +343,8 @@ const getVehiclesByFilterController = async (req, res) => {
 
     const vehicles = await Vehicle.aggregate(pipeline);
 
+    const currency = await getDistributorShortName(businessId);
+
     // Populate inspectorId with username
     await User.populate(vehicles, {
       path: "inspections.inspectorId reinspections.inspectorId",
@@ -322,6 +363,10 @@ const getVehiclesByFilterController = async (req, res) => {
               url: getProxyUrl(req, p.url),
             }));
           }
+          if (currency) {
+            ins.totalValue = formatCurrency(ins.totalValue, "usd");
+            ins.costOfAcquisition = formatCurrency(ins.costOfAcquisition, "usd");
+          }
           return ins;
         });
       }
@@ -337,8 +382,23 @@ const getVehiclesByFilterController = async (req, res) => {
               url: getProxyUrl(req, p.url),
             }));
           }
+          if (currency) {
+            reins.totalValue = formatCurrency(reins.totalValue, "usd");
+            reins.costOfAcquisition = formatCurrency(reins.costOfAcquisition, "usd");
+          }
           return reins;
         });
+      }
+
+      if (currency) {
+        vehicle.finalValue = formatCurrency(vehicle.finalValue, "usd");
+        vehicle.rentabilityValue = formatCurrency(vehicle.rentabilityValue, "usd");
+        if (vehicle.vehicleBills) {
+          vehicle.vehicleBills = vehicle.vehicleBills.map(b => ({
+            ...b,
+            cost: formatCurrency(b.cost, currency)
+          }));
+        }
       }
 
       return vehicle;

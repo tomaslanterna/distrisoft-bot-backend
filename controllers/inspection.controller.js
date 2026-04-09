@@ -7,8 +7,11 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { Vehicle } = require("../models/Vehicle");
 const { Inspection } = require("../models/Inspection");
 const { Reinspection } = require("../models/Reinspection");
+const Distributor = require("../models/Distributor");
 const { callGeminiWithRetry } = require("../services/gemini.service");
 const { uploadToS3, getObjectStream } = require("../services/s3.service");
+const { formatCurrency, getDistributorShortName } = require("../utils/currency.util");
+const { getCountryConfig } = require("../utils/countries.util");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -253,12 +256,29 @@ const createInspectionController = async (req, res) => {
     await vehicle.save();
 
     await newInspection.save();
+
+    const currency = await getDistributorShortName(businessId);
+    let finalInspection = newInspection.toObject();
+    let finalVehicle = vehicle.toObject();
+
+    if (currency) {
+      finalInspection.totalValue = formatCurrency(finalInspection.totalValue, "usd");
+      finalInspection.costOfAcquisition = formatCurrency(finalInspection.costOfAcquisition, "usd");
+      finalVehicle.finalValue = formatCurrency(finalVehicle.finalValue, "usd");
+      finalVehicle.rentabilityValue = formatCurrency(finalVehicle.rentabilityValue, "usd");
+      if (finalVehicle.vehicleBills) {
+        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map(b => ({
+          ...b, cost: formatCurrency(b.cost, currency)
+        }));
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Inspección creada con éxito",
       data: {
-        inspection: newInspection,
-        vehicle: vehicle,
+        inspection: finalInspection,
+        vehicle: finalVehicle,
       },
     });
   } catch (error) {
@@ -557,12 +577,27 @@ const confirmInspectionController = async (req, res) => {
       })),
     );
 
+    const currency = await getDistributorShortName(inspection.businessId);
+    let finalVehicle = vehicle.toObject();
+
+    if (currency) {
+      inspectionObj.totalValue = formatCurrency(inspectionObj.totalValue, "usd");
+      inspectionObj.costOfAcquisition = formatCurrency(inspectionObj.costOfAcquisition, "usd");
+      finalVehicle.finalValue = formatCurrency(finalVehicle.finalValue, "usd");
+      finalVehicle.rentabilityValue = formatCurrency(finalVehicle.rentabilityValue, "usd");
+      if (finalVehicle.vehicleBills) {
+        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map(b => ({
+          ...b, cost: formatCurrency(b.cost, currency)
+        }));
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Inspección confirmada exitosamente.",
       data: {
         inspection: inspectionObj,
-        vehicle,
+        vehicle: finalVehicle,
       },
     });
   } catch (error) {
@@ -607,6 +642,7 @@ const getInspectionsByTypeController = async (req, res) => {
       .sort({ createdAt: -1 });
 
     // Transformar Keys en Proxy URLs y agregar userName
+    const currency = await getDistributorShortName(businessId);
     const enrichedData = await Promise.all(
       inspections.map(async (item) => {
         const itemObj = item.toObject();
@@ -621,6 +657,12 @@ const getInspectionsByTypeController = async (req, res) => {
               url: getProxyUrl(req, p.url),
             })),
           );
+        }
+        if (currency && itemObj.totalValue !== undefined) {
+          itemObj.totalValue = formatCurrency(itemObj.totalValue, "usd");
+        }
+        if (currency && itemObj.costOfAcquisition !== undefined) {
+          itemObj.costOfAcquisition = formatCurrency(itemObj.costOfAcquisition, "usd");
         }
         return itemObj;
       }),
@@ -690,10 +732,15 @@ const getInspectionByPlateController = async (req, res) => {
     );
 
     const inspectionData = inspection.toObject();
+    const currency = await getDistributorShortName(businessId);
     inspectionData.userName = inspection.inspectorId?.username || "Unknown";
     inspectionData.inspectorId =
       inspection.inspectorId?._id || inspection.inspectorId;
     inspectionData.photos = photosWithUrls;
+    if (currency) {
+      inspectionData.totalValue = formatCurrency(inspectionData.totalValue, "usd");
+      inspectionData.costOfAcquisition = formatCurrency(inspectionData.costOfAcquisition, "usd");
+    }
 
     return res.status(200).json({
       success: true,
@@ -835,6 +882,12 @@ const updateInspectionStatusController = async (req, res) => {
       })),
     );
 
+    const currency = await getDistributorShortName(inspection.businessId);
+    if (currency) {
+      inspectionObj.totalValue = formatCurrency(inspectionObj.totalValue, "usd");
+      inspectionObj.costOfAcquisition = formatCurrency(inspectionObj.costOfAcquisition, "usd");
+    }
+
     return res.status(200).json({
       success: true,
       message: "Estado de inspección actualizado correctamente.",
@@ -874,6 +927,7 @@ const getInspectionsByFilterController = async (req, res) => {
       .sort({ createdAt: -1 });
 
     // Transformar Keys en Proxy URLs para todas las inspecciones
+    const currency = await getDistributorShortName(user.distributorId);
     const enrichedInspections = await Promise.all(
       inspections.map(async (ins) => {
         const insObj = ins.toObject();
@@ -885,6 +939,10 @@ const getInspectionsByFilterController = async (req, res) => {
             url: getProxyUrl(req, p.url),
           })),
         );
+        if (currency) {
+          insObj.totalValue = formatCurrency(insObj.totalValue, "usd");
+          insObj.costOfAcquisition = formatCurrency(insObj.costOfAcquisition, "usd");
+        }
         return insObj;
       }),
     );
@@ -926,10 +984,15 @@ const getReinspectionsByFilterController = async (req, res) => {
       .populate("inspectorId", "username")
       .sort({ createdAt: -1 });
 
+    const currency = await getDistributorShortName(user.distributorId);
     const enrichedReinspections = reinspections.map((re) => {
       const reObj = re.toObject();
       reObj.userName = re.inspectorId?.username || "Unknown";
       reObj.inspectorId = re.inspectorId?._id || re.inspectorId;
+      if (currency) {
+        reObj.totalValue = formatCurrency(reObj.totalValue, "usd");
+        reObj.costOfAcquisition = formatCurrency(reObj.costOfAcquisition, "usd");
+      }
       return reObj;
     });
 
@@ -1059,10 +1122,17 @@ const updateReinspectionStateController = async (req, res) => {
       }
     }
 
+    const currency = await getDistributorShortName(reinspection.businessId);
+    let finalReinspection = reinspection.toObject();
+    if (currency) {
+      finalReinspection.totalValue = formatCurrency(finalReinspection.totalValue, "usd");
+      finalReinspection.costOfAcquisition = formatCurrency(finalReinspection.costOfAcquisition, "usd");
+    }
+
     return res.status(200).json({
       success: true,
       message: "Reinspección actualizada correctamente.",
-      data: reinspection,
+      data: finalReinspection,
     });
   } catch (error) {
     console.error("Error en updateReinspectionStateController:", error);
@@ -1119,6 +1189,10 @@ const analyzePhotosController = async (req, res) => {
           "Se requieren al menos 6 fotos para realizar el análisis inteligente.",
       });
     }
+
+    const distributorObj = await Distributor.findById(businessId).lean();
+    const countryShortName = distributorObj?.country?.shortName;
+    const countryName = getCountryConfig(countryShortName).name;
 
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
@@ -1201,11 +1275,11 @@ REGLA ESTRICTA DE AUDIO:
 
 * Conclusión sobre si es una unidad recomendada o si requiere inversión inmediata.
 
-* Busca el valor actual en portales líderes (ej. Mercado Libre) según el país. Ajusta el totalValue según modelo, combustible,año y kilometraje.
+* Busca el valor actual en portales líderes (ej. Mercado Libre) para el país ${countryName}. Ajusta el totalValue según modelo, combustible,año y kilometraje.
 
-* Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
+* Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado en ${countryName}, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
 
-* Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado uruguayo. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
+* Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado de automotores de ${countryName}. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
 
 * Especifica si el audio contiene ruidos de motor, embrague o caja. Si hay un audio que NO es de un motor, pon "En el audio no se detectaron ruidos de motor, embrague o caja."
 
