@@ -1325,7 +1325,7 @@ REGLA ESTRICTA DE AUDIO:
 
 * Conclusión sobre si es una unidad recomendada o si requiere inversión inmediata.
 
-* **Cálculo del Valor de Mercado ("totalValue")**: Busca el precio actual de venta al público en portales líderes (ej. Mercado Libre) para el país ${countryName}. **ES OBLIGATORIO Y ESTRICTO** que no uses un valor o promedio genérico del modelo. Debes ajustar el "totalValue" basándote fundamentalmente en el **año de fabricación** (aplicando la depreciación por antigüedad) y el **kilometraje exacto** (penalizando o elevando el precio según el desgaste). Considera también las versiones de equipamiento y el tipo de combustible.
+* **Cálculo del Valor de Mercado ("totalValue")**: Busca el precio actual de venta al público en portales líderes (ej. Mercado Libre) para el país ${countryName}. **ES OBLIGATORIO Y ESTRICTO** que no uses un valor o promedio genérico del modelo. Debes ajustar el "totalValue" basándote fundamentalmente en el **año de fabricación** (aplicando la depreciación por antigüedad) y el **kilometraje exacto** (penalizando o elevando el precio según el desgaste). Considera también las versiones de equipamiento y el tipo de combustible. A ese precio obtenido restale un margen de comercialización que comúnmente es del 15%
 
 * **Cálculo del Costo de Adquisición ("costOfAcquisition")**: Determina el valor de toma (el precio al que una automotora compraría el auto para luego revenderlo en el mercado de ${countryName}). Este cálculo debe aplicarse tomando como base el "totalValue" que ya fue ajustado por año y kilometraje en el paso anterior, restándole un margen de comercialización que comúnmente es del 20%.
 
