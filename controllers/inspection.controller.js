@@ -10,7 +10,10 @@ const { Reinspection } = require("../models/Reinspection");
 const Distributor = require("../models/Distributor");
 const { callGeminiWithRetry } = require("../services/gemini.service");
 const { uploadToS3, getObjectStream } = require("../services/s3.service");
-const { formatCurrency, getDistributorShortName } = require("../utils/currency.util");
+const {
+  formatCurrency,
+  getDistributorShortName,
+} = require("../utils/currency.util");
 const { getCountryConfig } = require("../utils/countries.util");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -262,13 +265,23 @@ const createInspectionController = async (req, res) => {
     let finalVehicle = vehicle.toObject();
 
     if (currency) {
-      finalInspection.totalValue = formatCurrency(finalInspection.totalValue, "usd");
-      finalInspection.costOfAcquisition = formatCurrency(finalInspection.costOfAcquisition, "usd");
+      finalInspection.totalValue = formatCurrency(
+        finalInspection.totalValue,
+        "usd",
+      );
+      finalInspection.costOfAcquisition = formatCurrency(
+        finalInspection.costOfAcquisition,
+        "usd",
+      );
       finalVehicle.finalValue = formatCurrency(finalVehicle.finalValue, "usd");
-      finalVehicle.rentabilityValue = formatCurrency(finalVehicle.rentabilityValue, "usd");
+      finalVehicle.rentabilityValue = formatCurrency(
+        finalVehicle.rentabilityValue,
+        "usd",
+      );
       if (finalVehicle.vehicleBills) {
-        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map(b => ({
-          ...b, cost: formatCurrency(b.cost, currency)
+        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map((b) => ({
+          ...b,
+          cost: formatCurrency(b.cost, currency),
         }));
       }
     }
@@ -581,13 +594,23 @@ const confirmInspectionController = async (req, res) => {
     let finalVehicle = vehicle.toObject();
 
     if (currency) {
-      inspectionObj.totalValue = formatCurrency(inspectionObj.totalValue, "usd");
-      inspectionObj.costOfAcquisition = formatCurrency(inspectionObj.costOfAcquisition, "usd");
+      inspectionObj.totalValue = formatCurrency(
+        inspectionObj.totalValue,
+        "usd",
+      );
+      inspectionObj.costOfAcquisition = formatCurrency(
+        inspectionObj.costOfAcquisition,
+        "usd",
+      );
       finalVehicle.finalValue = formatCurrency(finalVehicle.finalValue, "usd");
-      finalVehicle.rentabilityValue = formatCurrency(finalVehicle.rentabilityValue, "usd");
+      finalVehicle.rentabilityValue = formatCurrency(
+        finalVehicle.rentabilityValue,
+        "usd",
+      );
       if (finalVehicle.vehicleBills) {
-        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map(b => ({
-          ...b, cost: formatCurrency(b.cost, currency)
+        finalVehicle.vehicleBills = finalVehicle.vehicleBills.map((b) => ({
+          ...b,
+          cost: formatCurrency(b.cost, currency),
         }));
       }
     }
@@ -662,7 +685,10 @@ const getInspectionsByTypeController = async (req, res) => {
           itemObj.totalValue = formatCurrency(itemObj.totalValue, "usd");
         }
         if (currency && itemObj.costOfAcquisition !== undefined) {
-          itemObj.costOfAcquisition = formatCurrency(itemObj.costOfAcquisition, "usd");
+          itemObj.costOfAcquisition = formatCurrency(
+            itemObj.costOfAcquisition,
+            "usd",
+          );
         }
         return itemObj;
       }),
@@ -738,8 +764,14 @@ const getInspectionByPlateController = async (req, res) => {
       inspection.inspectorId?._id || inspection.inspectorId;
     inspectionData.photos = photosWithUrls;
     if (currency) {
-      inspectionData.totalValue = formatCurrency(inspectionData.totalValue, "usd");
-      inspectionData.costOfAcquisition = formatCurrency(inspectionData.costOfAcquisition, "usd");
+      inspectionData.totalValue = formatCurrency(
+        inspectionData.totalValue,
+        "usd",
+      );
+      inspectionData.costOfAcquisition = formatCurrency(
+        inspectionData.costOfAcquisition,
+        "usd",
+      );
     }
 
     return res.status(200).json({
@@ -884,8 +916,14 @@ const updateInspectionStatusController = async (req, res) => {
 
     const currency = await getDistributorShortName(inspection.businessId);
     if (currency) {
-      inspectionObj.totalValue = formatCurrency(inspectionObj.totalValue, "usd");
-      inspectionObj.costOfAcquisition = formatCurrency(inspectionObj.costOfAcquisition, "usd");
+      inspectionObj.totalValue = formatCurrency(
+        inspectionObj.totalValue,
+        "usd",
+      );
+      inspectionObj.costOfAcquisition = formatCurrency(
+        inspectionObj.costOfAcquisition,
+        "usd",
+      );
     }
 
     return res.status(200).json({
@@ -941,7 +979,10 @@ const getInspectionsByFilterController = async (req, res) => {
         );
         if (currency) {
           insObj.totalValue = formatCurrency(insObj.totalValue, "usd");
-          insObj.costOfAcquisition = formatCurrency(insObj.costOfAcquisition, "usd");
+          insObj.costOfAcquisition = formatCurrency(
+            insObj.costOfAcquisition,
+            "usd",
+          );
         }
         return insObj;
       }),
@@ -991,7 +1032,10 @@ const getReinspectionsByFilterController = async (req, res) => {
       reObj.inspectorId = re.inspectorId?._id || re.inspectorId;
       if (currency) {
         reObj.totalValue = formatCurrency(reObj.totalValue, "usd");
-        reObj.costOfAcquisition = formatCurrency(reObj.costOfAcquisition, "usd");
+        reObj.costOfAcquisition = formatCurrency(
+          reObj.costOfAcquisition,
+          "usd",
+        );
       }
       return reObj;
     });
@@ -1125,8 +1169,14 @@ const updateReinspectionStateController = async (req, res) => {
     const currency = await getDistributorShortName(reinspection.businessId);
     let finalReinspection = reinspection.toObject();
     if (currency) {
-      finalReinspection.totalValue = formatCurrency(finalReinspection.totalValue, "usd");
-      finalReinspection.costOfAcquisition = formatCurrency(finalReinspection.costOfAcquisition, "usd");
+      finalReinspection.totalValue = formatCurrency(
+        finalReinspection.totalValue,
+        "usd",
+      );
+      finalReinspection.costOfAcquisition = formatCurrency(
+        finalReinspection.costOfAcquisition,
+        "usd",
+      );
     }
 
     return res.status(200).json({
@@ -1275,9 +1325,9 @@ REGLA ESTRICTA DE AUDIO:
 
 * Conclusión sobre si es una unidad recomendada o si requiere inversión inmediata.
 
-* Busca el valor actual en portales líderes (ej. Mercado Libre) para el país ${countryName}. Ajusta el totalValue según modelo, combustible,año y kilometraje.
+* **Cálculo del Valor de Mercado ("totalValue")**: Busca el precio actual de venta al público en portales líderes (ej. Mercado Libre) para el país ${countryName}. **ES OBLIGATORIO Y ESTRICTO** que no uses un valor o promedio genérico del modelo. Debes ajustar el "totalValue" basándote fundamentalmente en el **año de fabricación** (aplicando la depreciación por antigüedad) y el **kilometraje exacto** (penalizando o elevando el precio según el desgaste). Considera también las versiones de equipamiento y el tipo de combustible.
 
-* Busca el valor en el cual la automotora podria tomar ese auto para despues venderlo al precio del mercado en ${countryName}, esto se guardara en una prop costOfAcquisition, comunmente es 20% menos que el totalValue.
+* **Cálculo del Costo de Adquisición ("costOfAcquisition")**: Determina el valor de toma (el precio al que una automotora compraría el auto para luego revenderlo en el mercado de ${countryName}). Este cálculo debe aplicarse tomando como base el "totalValue" que ya fue ajustado por año y kilometraje en el paso anterior, restándole un margen de comercialización que comúnmente es del 20%.
 
 * Busca el % porcentaje del 1 al 100% de exito de venta frente al mercado de automotores de ${countryName}. Este porcentaje tiene cuenta su precio, modelo y año. Podes buscar un aproximado en internet, este campo deberia ir como successPercentage.
 
