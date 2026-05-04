@@ -59,6 +59,7 @@ const VehicleSchema = new Schema(
     brand: { type: String, required: true },
     model: { type: String, required: true },
     year: { type: Number, required: true },
+    fuel: { type: String, required: false },
     status: {
       type: String,
       enum: [

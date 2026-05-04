@@ -65,6 +65,7 @@ const InspectionSchema = new Schema(
       location: String,
       externalTemp: String,
       notes: String,
+      fuel: String,
     },
     checklistRating: { type: Number, default: 0 },
     overallRating: { type: Number, default: 0 },

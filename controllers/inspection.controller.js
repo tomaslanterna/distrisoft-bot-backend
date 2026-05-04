@@ -168,6 +168,7 @@ const createInspectionController = async (req, res) => {
         brand: ObjectData.marca,
         model: ObjectData.modelo,
         year: parseInt(ObjectData.ano, 10),
+        fuel: ObjectData.combustible,
         status: "PENDING_REVIEW", // Initial status after inspection?
         rating: overallRating, // Use overall rating
       });
@@ -175,6 +176,8 @@ const createInspectionController = async (req, res) => {
       // Update existing vehicle stats
       vehicle.rating = overallRating;
       vehicle.status = "SUCCESSFULLY_REVIEW";
+      if (ObjectData.combustible !== undefined)
+        vehicle.fuel = ObjectData.combustible;
       // Optional: Update other fields if changed? Let's stick to core updates.
     }
 
@@ -242,6 +245,7 @@ const createInspectionController = async (req, res) => {
       metadata: {
         mileage: parseInt(ObjectData.kilometros, 10),
         notes: ObjectData.observaciones,
+        fuel: ObjectData.combustible,
         // location and externalTemp not in provided payload, skipping
       },
       checklistRating: checklistRating,
@@ -557,6 +561,8 @@ const confirmInspectionController = async (req, res) => {
     inspection.vehicleComponents = vehicleComponents;
     inspection.metadata.mileage = parseInt(inspectionData.kilometros, 10);
     inspection.metadata.notes = inspectionData.observaciones;
+    if (inspectionData.combustible !== undefined)
+      inspection.metadata.fuel = inspectionData.combustible;
     inspection.photos = photos;
     inspection.inspectionType = "SUCCESSFULLY_INSPECTION";
     inspection.checklistRating = checklistRating;
@@ -578,6 +584,8 @@ const confirmInspectionController = async (req, res) => {
 
     vehicle.rating = ratingPercentage;
     vehicle.status = "SUCCESSFULLY_REVIEW"; // Mapping "confirmed" to Schema Enum
+    if (inspectionData.combustible !== undefined)
+      vehicle.fuel = inspectionData.combustible;
 
     await vehicle.save();
 
@@ -1351,7 +1359,7 @@ ESTRUCTURA REQUERIDA:
 "model": "Modelo",
 "plate": "Matrícula",
 "vin": "Nro. de Chasis",
-"fuel" : "Comb",
+"fuel" : "Combustible",
 "year": "Año"
 },
 "totalValue": 0,
