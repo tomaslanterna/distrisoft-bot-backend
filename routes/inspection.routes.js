@@ -47,4 +47,12 @@ router.put(
   updateReinspectionStateController,
 );
 
+//Filters
+router.get("/filter", authMiddleware, getInspectionsByFilterController);
+router.get(
+  "/reinspections/filter",
+  authMiddleware,
+  getReinspectionsByFilterController,
+);
+
 module.exports = router;
